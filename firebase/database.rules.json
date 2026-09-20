@@ -27,7 +27,7 @@
           ".validate": "newData.isNumber()"
         },
         "avatarUrl": {
-          ".validate": "newData.isString()"
+          ".validate": "newData.isString() && newData.val().length < 150000"
         },
         "notificationsEnabled": {
           ".validate": "newData.isBoolean()"
@@ -54,6 +54,9 @@
             "type": {
               ".validate": "newData.isString() && (newData.val() === 'economy' || newData.val() === 'comfort' || newData.val() === 'xl')"
             }
+          },
+          "avatarUrl": {
+            ".validate": "newData.isString() && newData.val().length < 150000"
           }
         },
 

@@ -15,7 +15,6 @@ bottom, but nothing here requires it.
 ```
 firebase/
   database.rules.json      Realtime Database security rules
-  storage.rules             Firebase Storage rules (avatar photos)
   firebase.json             Firebase CLI project config
   .firebaserc                Project alias (replace with your project id)
   schema/sample-database.json  Reference snapshot of the DB shape, incl. seed data
@@ -30,7 +29,7 @@ mobile/
   src/utils/currency.ts     Fixed BGN/EUR peg conversion + dual-currency formatting
   src/utils/reviews.ts      Computes a driver's aggregate rating + review list from ride history
   src/services/freeMaps.ts  Nominatim search + OSRM routing (free, no key)
-  src/services/avatar.ts    Picks + uploads a profile photo to Firebase Storage
+  src/services/avatar.ts    Picks + compresses a profile photo, stores it as base64 in the DB
   src/components/LeafletMap.tsx  WebView + Leaflet + OSM tiles (free, no key)
   src/navigation/            RootNavigator + Auth/Rider/Driver stacks
   src/screens/auth/          Welcome, email sign up/in, profile+vehicle setup
@@ -51,7 +50,7 @@ mobile/
 - `/transactions/{rideId}` — the logged, final record of a completed ride (`riderId`, `driverId`, `distanceKm`, `durationMin`, `fareBGN`, `platformFeeBGN`, `driverEarningsBGN`, `paymentMethod`, `completedAt`), written by the completing driver's client.
 - `/riderHistory/{riderId}/{rideId}` and `/driverHistory/{driverId}/{rideId}` — `true`-valued fan-out indexes so a user's completed-ride history can be listed without scanning all of `/rides`. Each user can only read/write their own.
 
-Firebase **Storage** (also free on Spark) holds one avatar image per user at `/avatars/{uid}`, governed by `firebase/storage.rules`: anyone signed in can read any avatar, only the owner can write theirs.
+**No Firebase Storage** — as of late 2024, Google requires the paid Blaze plan just to *create* a Storage bucket on a new project, even though actual usage would fall inside the free tier. So avatar photos are resized to 128x128, compressed to a small JPEG, and stored as a base64 data URI directly on `avatarUrl` (capped at ~150KB by the security rules) — no separate file host needed at all.
 
 See `firebase/schema/sample-database.json` for a full example snapshot (including a completed ride's `/transactions` + history entries) you can import via the Firebase console during local development.
 
@@ -87,7 +86,7 @@ server-authoritative version of the same logic.
 - **Dual currency.** Every fare shows both BGN and EUR (`mobile/src/utils/currency.ts`), using the fixed 1.95583 BGN/EUR peg Bulgaria's lev has held since 1997 — not a fluctuating rate, so hardcoding it is accurate, not a simplification.
 - **10% platform commission.** `completeRide()` in `useRideDispatch.ts` splits the final fare into `platformFeeBGN` (10%, from `pricing_rules.platformCommissionRate`) and `driverEarningsBGN` (the rest), stored on both the ride and its `/transactions` record. The driver sees this breakdown on the trip-complete screen and totalled on the new **Earnings & Reviews** screen (wallet icon on the driver dashboard).
 - **Reviews.** Riders can leave a star rating *and* a written review after a completed ride (stored on the ride itself, which they already have write access to). A driver's aggregate rating isn't a running counter riders write to — the security rules don't allow that — instead each driver's own app computes it from their own completed rides (`mobile/src/utils/reviews.ts`) and self-writes the average to `/drivers/{uid}/profile/rating`. The same computation powers the reviews list on the Earnings & Reviews screen.
-- **Avatar photos.** Either role can pick a profile photo (Profile screen, tap the camera badge on the avatar) via `expo-image-picker`, uploaded to Firebase Storage and referenced by URL from `/users/{uid}/avatarUrl` (and `/drivers/{uid}/profile/avatarUrl` for drivers, since that's the record riders actually read). Shown on the driver card during a live trip and on the rider's post-trip rating screen.
+- **Avatar photos.** Either role can pick a profile photo (Profile screen, tap the camera badge on the avatar) via `expo-image-picker`, resized/compressed with `expo-image-manipulator`, and stored as a base64 data URI on `/users/{uid}/avatarUrl` (and `/drivers/{uid}/profile/avatarUrl` for drivers, since that's the record riders actually read) — no file storage service involved at all. Shown on the driver card during a live trip and on the rider's post-trip rating screen.
 - **Settings + in-app notifications.** A Settings screen (gear icon on Profile) toggles notifications, stored on the user's profile. When enabled, `useRideNotifications.ts` fires a local notification (`expo-notifications`) on key status changes — driver matched, arrived, trip started/completed for the rider; a new ride request for the driver. **This only works while the app is open or backgrounded but still running** — there's no server to wake it up from fully closed, which real push notifications need (see "Optional upgrade" below).
 
 ## Security rules
@@ -105,7 +104,6 @@ server-authoritative version of the same logic.
 Deploy with the Firebase CLI from `firebase/`:
 ```
 firebase deploy --only database
-firebase deploy --only storage
 ```
 
 ## Setup (free, no credit card)
@@ -113,14 +111,13 @@ firebase deploy --only storage
 1. Create a Firebase project at console.firebase.google.com — no billing/Blaze upgrade needed for any of this.
 2. **Authentication** → enable the **Email/Password** sign-in method.
 3. **Realtime Database** → create one (any region).
-4. **Storage** → create a default bucket (needed for avatar photos; still free on Spark).
-5. Add an Android app and/or iOS app in Project Settings, download `google-services.json` / `GoogleService-Info.plist`, and place them in `mobile/` (paths already wired up in `mobile/app.config.js`; these files are gitignored — generate your own, don't commit them).
-6. Edit `firebase/.firebaserc`, replace the placeholder with your real project id.
-7. `cd firebase && firebase deploy --only database,storage` to push both rule sets.
-8. Import `firebase/schema/sample-database.json`'s `pricing_rules` node into your Realtime Database (Firebase console → Realtime Database → import, or just create it by hand) — fare estimates throw without it. **If you already created a `pricing_rules` node before this feature update**, don't re-import (that would overwrite your real ride data at the root) — just open that node in the console and add one field by hand: `platformCommissionRate` = `0.1`.
-9. `cd mobile && npm install`.
-10. **Important:** this app uses `@react-native-firebase` (native SDKs, required even for email/password auth on this SDK), so it needs a custom dev client — it will **not** run in Expo Go. Build one with `npx expo prebuild` + `npx expo run:android` / `run:ios` (needs Android Studio / Xcode locally), or use Expo's free-tier cloud builds (see "Building with EAS" below).
-11. Run it, sign up as a rider on one device/emulator and as a driver on another (or the same device, signed out and back in as a different account), flip the driver online, and request a ride from the rider side.
+4. Add an Android app and/or iOS app in Project Settings, download `google-services.json` / `GoogleService-Info.plist`, and place them in `mobile/` (paths already wired up in `mobile/app.config.js`; these files are gitignored — generate your own, don't commit them).
+5. Edit `firebase/.firebaserc`, replace the placeholder with your real project id.
+6. `cd firebase && firebase deploy --only database` to push the rules.
+7. Import `firebase/schema/sample-database.json`'s `pricing_rules` node into your Realtime Database (Firebase console → Realtime Database → import, or just create it by hand) — fare estimates throw without it. **If you already created a `pricing_rules` node before this feature update**, don't re-import (that would overwrite your real ride data at the root) — just open that node in the console and add one field by hand: `platformCommissionRate` = `0.1`.
+8. `cd mobile && npm install`.
+9. **Important:** this app uses `@react-native-firebase` (native SDKs, required even for email/password auth on this SDK), so it needs a custom dev client — it will **not** run in Expo Go. Build one with `npx expo prebuild` + `npx expo run:android` / `run:ios` (needs Android Studio / Xcode locally), or use Expo's free-tier cloud builds (see "Building with EAS" below).
+10. Run it, sign up as a rider on one device/emulator and as a driver on another (or the same device, signed out and back in as a different account), flip the driver online, and request a ride from the rider side.
 
 ## Building with EAS (cloud build, no Android Studio/Xcode needed)
 
