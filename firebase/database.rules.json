@@ -102,6 +102,27 @@
     "pricing_rules": {
       ".read": "auth != null",
       ".write": false
+    },
+
+    "transactions": {
+      "$rideId": {
+        ".read": "auth != null && (data.child('riderId').val() === auth.uid || data.child('driverId').val() === auth.uid)",
+        ".write": false
+      }
+    },
+
+    "riderHistory": {
+      "$riderId": {
+        ".read": "auth != null && auth.uid === $riderId",
+        ".write": false
+      }
+    },
+
+    "driverHistory": {
+      "$driverId": {
+        ".read": "auth != null && auth.uid === $driverId",
+        ".write": false
+      }
     }
   }
 }

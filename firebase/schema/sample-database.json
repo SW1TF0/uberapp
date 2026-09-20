@@ -73,7 +73,62 @@
       "startedAt": null,
       "completedAt": null,
       "cancelledAt": null,
-      "rating": null
+      "rating": null,
+      "_comment": "matching.* is internal bookkeeping written by the matchRideRequest Cloud Function (Phase 5) while status is 'requested' — see matchDriver.ts",
+      "matching": {
+        "offeredDriverId": "driverUid001",
+        "offeredAt": 1758000010000,
+        "expiresAt": 1758000025000,
+        "excludedDriverIds": { "driverUid001": true }
+      }
+    },
+    "-Nride0000000000000000": {
+      "riderId": "riderUid001",
+      "driverId": "driverUid001",
+      "pickup": { "lat": 41.6367, "lng": 25.3773, "address": "Централен площад" },
+      "dropoff": { "lat": 41.6299, "lng": 25.3841, "address": "Мол Кърджали" },
+      "vehicleType": "economy",
+      "paymentMethod": "cash",
+      "status": "completed",
+      "distanceKm": 1.9,
+      "durationMin": 5,
+      "isOuterZone": false,
+      "fareEstimateBGN": 6.1,
+      "finalFareBGN": 6.2,
+      "requestedAt": 1757999000000,
+      "acceptedAt": 1757999010000,
+      "arrivedAt": 1757999090000,
+      "startedAt": 1757999120000,
+      "completedAt": 1757999420000,
+      "cancelledAt": null,
+      "rating": 5
+    }
+  },
+
+  "transactions": {
+    "-Nride0000000000000000": {
+      "rideId": "-Nride0000000000000000",
+      "riderId": "riderUid001",
+      "driverId": "driverUid001",
+      "vehicleType": "economy",
+      "paymentMethod": "cash",
+      "distanceKm": 1.9,
+      "durationMin": 5,
+      "fareBGN": 6.2,
+      "currency": "BGN",
+      "completedAt": 1757999420000
+    }
+  },
+
+  "riderHistory": {
+    "riderUid001": {
+      "-Nride0000000000000000": true
+    }
+  },
+
+  "driverHistory": {
+    "driverUid001": {
+      "-Nride0000000000000000": true
     }
   },
 
