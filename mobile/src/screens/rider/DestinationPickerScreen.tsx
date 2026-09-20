@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import * as Location from 'expo-location';
-import { MapPin, Search } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Search } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
@@ -77,6 +77,9 @@ export default function DestinationPickerScreen({ navigation }: Props) {
   return (
     <View style={styles.flex}>
       <View style={styles.searchPanel}>
+        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+          <ArrowLeft size={20} color={colors.text} />
+        </Pressable>
         <View style={styles.inputRow}>
           <MapPin size={16} color={colors.primary} />
           <Text style={styles.pickupText} numberOfLines={1}>
@@ -147,6 +150,13 @@ export default function DestinationPickerScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   searchPanel: { padding: 20, paddingTop: 60, backgroundColor: colors.background },
+  backButton: {
+    backgroundColor: colors.surface,
+    padding: 10,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',

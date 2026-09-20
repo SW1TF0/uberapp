@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import database from '@react-native-firebase/database';
-import { Banknote, CreditCard } from 'lucide-react-native';
+import { ArrowLeft, Banknote, CreditCard } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
@@ -65,6 +65,9 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.flex}>
+      <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+        <ArrowLeft size={20} color={colors.text} />
+      </Pressable>
       <Text style={styles.title}>
         {pickup.address || 'Начало'} → {dropoff.address || 'Дестинация'}
       </Text>
@@ -128,6 +131,13 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  backButton: {
+    backgroundColor: colors.card,
+    padding: 10,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
   title: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 8 },
   surchargeNote: { color: colors.warning, fontSize: 12, marginBottom: 16 },
   vehicleList: { marginTop: 12 },
