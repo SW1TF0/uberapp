@@ -1,6 +1,6 @@
 // @react-native-firebase initializes its native SDK automatically from the
 // platform config files (google-services.json / GoogleService-Info.plist)
-// declared in app.json — there is no JS-side apiKey object to fill in here,
+// declared in app.config.js — there is no JS-side apiKey object to fill in here,
 // unlike the Firebase Web SDK. This module just exposes typed, ready-to-use
 // instances so the rest of the app never imports the native packages directly.
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';

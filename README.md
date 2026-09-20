@@ -97,13 +97,37 @@ firebase deploy --only database
 1. Create a Firebase project at console.firebase.google.com — no billing/Blaze upgrade needed for any of this.
 2. **Authentication** → enable the **Email/Password** sign-in method.
 3. **Realtime Database** → create one (any region).
-4. Add an Android app and/or iOS app in Project Settings, download `google-services.json` / `GoogleService-Info.plist`, and place them in `mobile/` (paths already wired up in `mobile/app.json`; these files are gitignored — generate your own, don't commit them).
+4. Add an Android app and/or iOS app in Project Settings, download `google-services.json` / `GoogleService-Info.plist`, and place them in `mobile/` (paths already wired up in `mobile/app.config.js`; these files are gitignored — generate your own, don't commit them).
 5. Edit `firebase/.firebaserc`, replace the placeholder with your real project id.
 6. `cd firebase && firebase deploy --only database` to push the security rules.
 7. Import `firebase/schema/sample-database.json`'s `pricing_rules` node into your Realtime Database (Firebase console → Realtime Database → import, or just create it by hand) — fare estimates throw without it.
 8. `cd mobile && npm install`.
-9. **Important:** this app uses `@react-native-firebase` (native SDKs, required even for email/password auth on this SDK), so it needs a custom dev client — it will **not** run in Expo Go. Build one with `npx expo prebuild` + `npx expo run:android` / `run:ios` (needs Android Studio / Xcode locally), or use Expo's free-tier cloud builds: `eas build --profile development`.
+9. **Important:** this app uses `@react-native-firebase` (native SDKs, required even for email/password auth on this SDK), so it needs a custom dev client — it will **not** run in Expo Go. Build one with `npx expo prebuild` + `npx expo run:android` / `run:ios` (needs Android Studio / Xcode locally), or use Expo's free-tier cloud builds (see "Building with EAS" below).
 10. Run it, sign up as a rider on one device/emulator and as a driver on another (or the same device, signed out and back in as a different account), flip the driver online, and request a ride from the rider side.
+
+## Building with EAS (cloud build, no Android Studio/Xcode needed)
+
+`mobile/eas.json` defines `development`/`preview`/`production` build
+profiles. `eas build --platform android --profile preview` builds a
+standalone installable APK on Expo's servers — nothing to install
+locally beyond `npm install -g eas-cli` and `eas login` (free account).
+
+One catch: **EAS Build only uploads files tracked by git**, and
+`google-services.json`/`GoogleService-Info.plist` are deliberately
+gitignored (they're project-specific secrets). `mobile/app.config.js`
+(a dynamic config, not a static `app.json`, specifically so this can be
+an expression) reads them from environment variables when present,
+falling back to the local file for on-machine builds:
+```js
+googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
+```
+So before your first cloud build, upload the file as a secure EAS **file**
+environment variable (run from `mobile/`, with `google-services.json`
+already sitting there from the setup steps above):
+```
+eas env:create --scope project --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret --environment preview
+```
+(swap `--environment preview` for `development`/`production`, or repeat the command once per environment you build for). Do the same for `GoogleService-Info.plist` under the name `GOOGLE_SERVICES_INFO_PLIST` if you're also building for iOS.
 
 I haven't been able to run or test any of this against a live Firebase project, a real device/simulator, or the public Nominatim/OSRM endpoints from a running app in this sandbox — there's no Firebase project, billing-free or not, and no mobile runtime available here. Everything type-checks cleanly (`npx tsc --noEmit` in `mobile/`, zero errors), and the JSON files (`database.rules.json`, `sample-database.json`) are verified valid JSON, but treat the actual on-device/on-Firebase behavior as unverified until you run it yourself.
 
