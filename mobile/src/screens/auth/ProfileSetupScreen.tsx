@@ -18,6 +18,7 @@ export default function ProfileSetupScreen({ route }: Props) {
   const { role } = route.params;
   const { completeRiderProfile, completeDriverProfile } = useAuth();
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [color, setColor] = useState('');
@@ -28,8 +29,8 @@ export default function ProfileSetupScreen({ route }: Props) {
 
   async function submit() {
     setError('');
-    if (!name.trim()) {
-      setError('Въведи име.');
+    if (!name.trim() || !phone.trim()) {
+      setError('Въведи име и телефон.');
       return;
     }
     if (role === 'driver' && (!make.trim() || !model.trim() || !color.trim() || !plate.trim())) {
@@ -40,7 +41,7 @@ export default function ProfileSetupScreen({ route }: Props) {
     setLoading(true);
     try {
       if (role === 'driver') {
-        await completeDriverProfile(name.trim(), {
+        await completeDriverProfile(name.trim(), phone.trim(), {
           make: make.trim(),
           model: model.trim(),
           color: color.trim(),
@@ -48,7 +49,7 @@ export default function ProfileSetupScreen({ route }: Props) {
           type: vehicleType,
         });
       } else {
-        await completeRiderProfile(name.trim());
+        await completeRiderProfile(name.trim(), phone.trim());
       }
       // No manual navigation needed: RootNavigator swaps to the role stack
       // automatically once the /users/{uid} listener in useAuth picks up
@@ -71,6 +72,16 @@ export default function ProfileSetupScreen({ route }: Props) {
         onChangeText={setName}
         placeholderTextColor={colors.textMuted}
         placeholder="Иван Иванов"
+      />
+
+      <Text style={styles.label}>Телефон</Text>
+      <TextInput
+        style={styles.input}
+        value={phone}
+        onChangeText={setPhone}
+        keyboardType="phone-pad"
+        placeholderTextColor={colors.textMuted}
+        placeholder="+359 88 123 4567"
       />
 
       {role === 'driver' && (

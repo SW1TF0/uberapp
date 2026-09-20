@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Switch, StyleSheet, Pressable } from 'react-native';
-import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 import database from '@react-native-firebase/database';
 import { User } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -11,7 +10,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { IncomingRequestOverlay } from '../../components/IncomingRequestOverlay';
-import { AnimatedDriverMarker } from '../../components/AnimatedDriverMarker';
+import { LeafletMap } from '../../components/LeafletMap';
 import { GeoPoint } from '../../types/models';
 
 type Props = NativeStackScreenProps<DriverStackParamList, 'DriverDashboard'>;
@@ -50,11 +49,24 @@ export default function DriverDashboardScreen({ navigation }: Props) {
     setOnline(value);
   }
 
+  // The offer can go stale between being shown and being accepted (the
+  // rider cancelled, or another client raced this one) — the security
+  // rules will simply reject that write, so fall back to declining
+  // cleanly instead of leaving a broken offer on screen.
+  async function respondAccept() {
+    try {
+      await acceptOffer();
+    } catch {
+      await declineOffer();
+    }
+  }
+
   return (
     <View style={styles.flex}>
-      <MapView style={styles.flex} provider={PROVIDER_DEFAULT} initialRegion={DEFAULT_REGION}>
-        {ownLocation && <AnimatedDriverMarker lat={ownLocation.lat} lng={ownLocation.lng} />}
-      </MapView>
+      <LeafletMap
+        region={DEFAULT_REGION}
+        driverMarkers={ownLocation ? [{ id: 'me', lat: ownLocation.lat, lng: ownLocation.lng }] : []}
+      />
 
       <View style={styles.topBar}>
         <View style={styles.statusPill}>
@@ -75,7 +87,7 @@ export default function DriverDashboardScreen({ navigation }: Props) {
       </View>
 
       {incomingOffer && (
-        <IncomingRequestOverlay offer={incomingOffer} onAccept={acceptOffer} onDecline={declineOffer} />
+        <IncomingRequestOverlay offer={incomingOffer} onAccept={respondAccept} onDecline={declineOffer} />
       )}
     </View>
   );

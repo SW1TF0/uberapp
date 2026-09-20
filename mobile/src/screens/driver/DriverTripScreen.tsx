@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import database from '@react-native-firebase/database';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DriverStackParamList } from '../../navigation/types';
@@ -8,18 +7,18 @@ import { colors } from '../../theme/colors';
 import { DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useAuth } from '../../hooks/useAuth';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
-import { DrivingEta, fetchDirections, fetchDrivingEta } from '../../services/googleMaps';
-import { AnimatedDriverMarker } from '../../components/AnimatedDriverMarker';
+import { DirectionsResult, fetchDirections } from '../../services/freeMaps';
+import { LeafletMap } from '../../components/LeafletMap';
 import { GeoPoint } from '../../types/models';
 
 type Props = NativeStackScreenProps<DriverStackParamList, 'DriverTrip'>;
 
 export default function DriverTripScreen({ navigation }: Props) {
   const { firebaseUser } = useAuth();
-  const { activeRide, updateRideStatus } = useRideDispatch();
+  const { activeRide, updateRideStatus, completeRide } = useRideDispatch();
   const [ownLocation, setOwnLocation] = useState<GeoPoint | null>(null);
-  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
-  const [eta, setEta] = useState<DrivingEta | null>(null);
+  const [route, setRoute] = useState<DirectionsResult | null>(null);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     if (!firebaseUser) return undefined;
@@ -38,11 +37,17 @@ export default function DriverTripScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (!ownLocation || !target) return;
-    fetchDirections(ownLocation, target).then((result) => {
-      if (result) setRouteCoords(result.polyline.map((p) => ({ latitude: p.lat, longitude: p.lng })));
-    });
-    fetchDrivingEta(ownLocation, target).then(setEta);
+    fetchDirections(ownLocation, target).then(setRoute);
   }, [ownLocation?.lat, ownLocation?.lng, target?.lat, target?.lng]);
+
+  async function finishTrip() {
+    setCompleting(true);
+    try {
+      await completeRide();
+    } finally {
+      setCompleting(false);
+    }
+  }
 
   // Free the driver back up once their own ride wraps up. This is a
   // self-write (auth.uid === driverId) so it's always allowed by the
@@ -90,28 +95,23 @@ export default function DriverTripScreen({ navigation }: Props) {
 
   return (
     <View style={styles.flex}>
-      <MapView style={styles.flex} provider={PROVIDER_DEFAULT} initialRegion={DEFAULT_REGION}>
-        <Marker
-          coordinate={{ latitude: activeRide.pickup.lat, longitude: activeRide.pickup.lng }}
-          pinColor={colors.primary}
-          title="Качване"
-        />
-        <Marker
-          coordinate={{ latitude: activeRide.dropoff.lat, longitude: activeRide.dropoff.lng }}
-          pinColor={colors.danger}
-          title="Дестинация"
-        />
-        {ownLocation && <AnimatedDriverMarker lat={ownLocation.lat} lng={ownLocation.lng} />}
-        {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeColor={colors.primary} strokeWidth={4} />}
-      </MapView>
+      <LeafletMap
+        region={DEFAULT_REGION}
+        markers={[
+          { id: 'pickup', lat: activeRide.pickup.lat, lng: activeRide.pickup.lng, color: colors.primary },
+          { id: 'dropoff', lat: activeRide.dropoff.lat, lng: activeRide.dropoff.lng, color: colors.danger },
+        ]}
+        driverMarkers={ownLocation ? [{ id: 'me', lat: ownLocation.lat, lng: ownLocation.lng }] : []}
+        polyline={route?.polyline ?? []}
+      />
 
       <View style={styles.banner}>
         <Text style={styles.bannerTitle}>
           {activeRide.status === 'in_progress' ? 'Към дестинацията' : 'Към пътника'}
         </Text>
-        {eta && (
+        {route && (
           <Text style={styles.bannerMeta}>
-            {eta.distanceKm} км · {eta.durationMin} мин
+            {route.distanceKm} км · {route.durationMin} мин
           </Text>
         )}
       </View>
@@ -128,9 +128,13 @@ export default function DriverTripScreen({ navigation }: Props) {
           </Pressable>
         )}
         {activeRide.status === 'in_progress' && (
-          <Pressable style={styles.primaryButton} onPress={() => updateRideStatus('completed')}>
+          <Pressable style={styles.primaryButton} onPress={finishTrip} disabled={completing}>
             <Text style={styles.primaryLabel}>
-              {activeRide.paymentMethod === 'cash' ? 'Завърши и вземи в брой' : 'Завърши пътуването'}
+              {completing
+                ? 'Завършва се...'
+                : activeRide.paymentMethod === 'cash'
+                ? 'Завърши и вземи в брой'
+                : 'Завърши пътуването'}
             </Text>
           </Pressable>
         )}

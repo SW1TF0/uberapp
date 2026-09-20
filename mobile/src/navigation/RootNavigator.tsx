@@ -8,8 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { AuthStackParamList, DriverStackParamList, RiderStackParamList } from './types';
 
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
-import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen';
-import OtpScreen from '../screens/auth/OtpScreen';
+import EmailAuthScreen from '../screens/auth/EmailAuthScreen';
 import ProfileSetupScreen from '../screens/auth/ProfileSetupScreen';
 
 import RiderMapScreen from '../screens/rider/RiderMapScreen';
@@ -37,8 +36,7 @@ function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={screenOptions}>
       <AuthStack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-      <AuthStack.Screen name="PhoneLogin" component={PhoneLoginScreen} options={{ title: '' }} />
-      <AuthStack.Screen name="Otp" component={OtpScreen} options={{ title: '' }} />
+      <AuthStack.Screen name="EmailAuth" component={EmailAuthScreen} options={{ title: '' }} />
       <AuthStack.Screen
         name="ProfileSetup"
         component={ProfileSetupScreen}

@@ -15,6 +15,7 @@ export type UserProfile = {
   role: Role;
   name: string;
   phone: string;
+  email: string;
   createdAt: number;
 };
 
@@ -72,6 +73,7 @@ export type Ride = {
   completedAt: number | null;
   cancelledAt: number | null;
   rating: number | null;
+  matching?: RideMatchingState;
 };
 
 export type DriverRideOffer = {
@@ -80,6 +82,16 @@ export type DriverRideOffer = {
   expiresAt: number;
   pickupDistanceKm: number;
   fareEstimateBGN: number;
+};
+
+// Client-side matching bookkeeping, written by the rider's own app (see
+// useRideDispatch's attemptMatch) since there's no Cloud Function driving
+// this in the free-tier setup. Lives at /rides/{rideId}/matching.
+export type RideMatchingState = {
+  offeredDriverId?: string;
+  offeredAt?: number;
+  expiresAt?: number;
+  excludedDriverIds?: Record<string, boolean>;
 };
 
 export type PricingRules = {

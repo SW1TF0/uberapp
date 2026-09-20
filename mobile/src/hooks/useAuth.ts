@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef } from 'react';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { useCallback, useEffect } from 'react';
+import auth from '@react-native-firebase/auth';
 import database from '@react-native-firebase/database';
 import { useAuthStore } from '../store/authStore';
 import { DriverVehicle, UserProfile } from '../types/models';
 
-// Wraps @react-native-firebase phone-number auth + the /users profile node.
-// Note: phone auth requires the native Firebase SDK, so this app must run
-// through a custom dev client (EAS Build / `expo prebuild`), not Expo Go.
+// Wraps @react-native-firebase email/password auth + the /users profile
+// node. Email/password is unambiguously free on Firebase's Spark plan (no
+// SMS costs, no billing account needed at all), unlike phone OTP — that's
+// why this app uses it instead. Still needs the native SDK though, so this
+// app must run through a custom dev client (EAS Build / `expo prebuild`),
+// not Expo Go.
 export function useAuth() {
   const firebaseUser = useAuthStore((s) => s.firebaseUser);
   const profile = useAuthStore((s) => s.profile);
@@ -15,15 +18,12 @@ export function useAuth() {
   const setProfile = useAuthStore((s) => s.setProfile);
   const setLoading = useAuthStore((s) => s.setLoading);
 
-  const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
-
   // `loading` only tracks whether we've heard from Firebase Auth at least
   // once (the initial app-boot check for a cached session). It must NOT be
   // re-triggered on every later sign-in, or RootNavigator's top-level
-  // loading/AuthStack switch would unmount the auth navigator mid-flow
-  // (e.g. right after OTP confirmation, wiping the in-flight
-  // navigation.replace('ProfileSetup', ...) call). Which stack to show
-  // afterwards is driven entirely by `profile` being null or not.
+  // loading/AuthStack switch would unmount the auth navigator mid-flow.
+  // Which stack to show afterwards is driven entirely by `profile` being
+  // null or not.
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged((user) => {
       setFirebaseUser(user);
@@ -42,21 +42,15 @@ export function useAuth() {
     return () => profileRef.off('value', onValueChange);
   }, [firebaseUser, setProfile]);
 
-  const sendOtp = useCallback(async (phoneNumber: string): Promise<void> => {
-    const confirmation = await auth().signInWithPhoneNumber(phoneNumber);
-    confirmationRef.current = confirmation;
+  const signUp = useCallback(async (email: string, password: string): Promise<void> => {
+    await auth().createUserWithEmailAndPassword(email.trim(), password);
   }, []);
 
-  const confirmOtp = useCallback(async (code: string): Promise<FirebaseAuthTypes.User | null> => {
-    if (!confirmationRef.current) {
-      throw new Error('Заяви код за потвърждение първо.');
-    }
-    const credential = await confirmationRef.current.confirm(code);
-    confirmationRef.current = null;
-    return credential?.user ?? null;
+  const signIn = useCallback(async (email: string, password: string): Promise<void> => {
+    await auth().signInWithEmailAndPassword(email.trim(), password);
   }, []);
 
-  const completeRiderProfile = useCallback(async (name: string): Promise<void> => {
+  const completeRiderProfile = useCallback(async (name: string, phone: string): Promise<void> => {
     const user = auth().currentUser;
     if (!user) throw new Error('Не си влязъл в профила си.');
 
@@ -64,14 +58,15 @@ export function useAuth() {
       uid: user.uid,
       role: 'rider',
       name,
-      phone: user.phoneNumber ?? '',
+      phone,
+      email: user.email ?? '',
       createdAt: Date.now(),
     };
     await database().ref(`/users/${user.uid}`).set(newProfile);
   }, []);
 
   const completeDriverProfile = useCallback(
-    async (name: string, vehicle: DriverVehicle): Promise<void> => {
+    async (name: string, phone: string, vehicle: DriverVehicle): Promise<void> => {
       const user = auth().currentUser;
       if (!user) throw new Error('Не си влязъл в профила си.');
 
@@ -79,7 +74,8 @@ export function useAuth() {
         uid: user.uid,
         role: 'driver',
         name,
-        phone: user.phoneNumber ?? '',
+        phone,
+        email: user.email ?? '',
         createdAt: Date.now(),
       };
 
@@ -87,7 +83,7 @@ export function useAuth() {
         [`/users/${user.uid}`]: newProfile,
         [`/drivers/${user.uid}/profile`]: {
           name,
-          phone: user.phoneNumber ?? '',
+          phone,
           rating: 5,
           vehicle,
         },
@@ -113,8 +109,8 @@ export function useAuth() {
     firebaseUser,
     profile,
     loading,
-    sendOtp,
-    confirmOtp,
+    signUp,
+    signIn,
     completeRiderProfile,
     completeDriverProfile,
     signOut,

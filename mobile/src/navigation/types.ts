@@ -2,8 +2,7 @@ import { GeoPoint } from '../types/models';
 
 export type AuthStackParamList = {
   Welcome: undefined;
-  PhoneLogin: { role: 'rider' | 'driver' };
-  Otp: { role: 'rider' | 'driver'; phone: string };
+  EmailAuth: { role: 'rider' | 'driver' };
   ProfileSetup: { role: 'rider' | 'driver' };
 };
 

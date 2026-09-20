@@ -7,7 +7,7 @@
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChildren(['uid','role','name','phone','createdAt'])",
+        ".validate": "newData.hasChildren(['uid','role','name','phone','email','createdAt'])",
         "uid": {
           ".validate": "newData.isString() && newData.val() === $uid"
         },
@@ -18,6 +18,9 @@
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 80"
         },
         "phone": {
+          ".validate": "newData.isString()"
+        },
+        "email": {
           ".validate": "newData.isString()"
         },
         "createdAt": {
@@ -68,8 +71,8 @@
     "driverRequests": {
       "$driverId": {
         ".read": "auth != null && auth.uid === $driverId",
-        ".write": "auth != null && auth.uid === $driverId",
         "$rideId": {
+          ".write": "auth != null && (auth.uid === $driverId || root.child('rides').child($rideId).child('riderId').val() === auth.uid)",
           ".validate": "newData.hasChildren(['rideId','offeredAt','expiresAt','pickupDistanceKm','fareEstimateBGN'])"
         }
       }
@@ -79,7 +82,7 @@
       ".indexOn": ["riderId", "driverId", "status"],
       "$rideId": {
         ".read": "auth != null && (data.child('riderId').val() === auth.uid || data.child('driverId').val() === auth.uid)",
-        ".write": "auth != null && ((!data.exists() && newData.child('riderId').val() === auth.uid && newData.child('status').val() === 'requested') || (data.exists() && data.child('riderId').val() === auth.uid && (newData.child('status').val() === 'cancelled' || data.child('status').val() === newData.child('status').val())) || (data.exists() && data.child('driverId').val() === auth.uid) || (data.exists() && !data.child('driverId').val() && newData.child('driverId').val() === auth.uid && newData.child('status').val() === 'accepted' && root.child('drivers').child(auth.uid).child('status').val() === 'online'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('riderId').val() === auth.uid && newData.child('status').val() === 'requested') || (data.exists() && data.child('riderId').val() === auth.uid && (newData.child('status').val() === 'cancelled' || data.child('status').val() === newData.child('status').val())) || (data.exists() && data.child('driverId').val() === auth.uid) || (data.exists() && data.child('status').val() === 'requested' && !data.child('driverId').val() && newData.child('driverId').val() === auth.uid && newData.child('status').val() === 'accepted' && root.child('drivers').child(auth.uid).child('status').val() === 'online'))",
 
         "riderId": { ".validate": "newData.isString()" },
         "driverId": { ".validate": "newData.val() === null || newData.isString()" },
@@ -95,7 +98,11 @@
           ".validate": "newData.isString() && (newData.val() === 'cash' || newData.val() === 'card')"
         },
         "fareEstimateBGN": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-        "finalFareBGN": { ".validate": "newData.val() === null || (newData.isNumber() && newData.val() >= 0)" }
+        "finalFareBGN": { ".validate": "newData.val() === null || (newData.isNumber() && newData.val() >= 0)" },
+
+        "matching": {
+          ".write": "auth != null && (root.child('rides').child($rideId).child('riderId').val() === auth.uid || data.child('offeredDriverId').val() === auth.uid)"
+        }
       }
     },
 
@@ -107,21 +114,25 @@
     "transactions": {
       "$rideId": {
         ".read": "auth != null && (data.child('riderId').val() === auth.uid || data.child('driverId').val() === auth.uid)",
-        ".write": false
+        ".write": "auth != null && root.child('rides').child($rideId).child('driverId').val() === auth.uid && root.child('rides').child($rideId).child('status').val() === 'completed'"
       }
     },
 
     "riderHistory": {
       "$riderId": {
         ".read": "auth != null && auth.uid === $riderId",
-        ".write": false
+        "$rideId": {
+          ".write": "auth != null && root.child('rides').child($rideId).child('driverId').val() === auth.uid"
+        }
       }
     },
 
     "driverHistory": {
       "$driverId": {
         ".read": "auth != null && auth.uid === $driverId",
-        ".write": false
+        "$rideId": {
+          ".write": "auth != null && auth.uid === $driverId"
+        }
       }
     }
   }

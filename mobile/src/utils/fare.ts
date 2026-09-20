@@ -6,10 +6,11 @@ function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }
 
-// Straight-line estimate used for the instant in-app fare quote. Phase 3
-// replaces the on-screen ETA/route with the Google Directions polyline, and
-// Phase 5's Cloud Function recomputes the authoritative final fare from the
-// actual driven route before it is written to ride history.
+// Straight-line estimate used for the instant in-app fare quote. The
+// destination picker and live trip screens show a real OSRM-routed
+// polyline/ETA instead, and completeRide() in useRideDispatch.ts
+// recomputes the authoritative final fare from the actual driven route
+// (via OSRM) before logging it to ride history.
 export function haversineKm(a: GeoPoint, b: GeoPoint): number {
   const R = 6371;
   const dLat = toRad(b.lat - a.lat);
@@ -56,4 +57,22 @@ export function estimateFare(
     isOuterZone,
     fareBGN,
   };
+}
+
+// Same pricing formula as estimateFare(), but for when distance/duration
+// are already known (e.g. from an OSRM route) instead of being derived
+// from pickup/dropoff via haversine.
+export function fareFromDistance(
+  distanceKm: number,
+  durationMin: number,
+  vehicleType: VehicleType,
+  pricing: PricingRules,
+  isOuterZone: boolean
+): number {
+  const multiplier = pricing.vehicleTypeMultipliers[vehicleType] ?? 1;
+  let fareBGN =
+    (pricing.baseFare + distanceKm * pricing.perKmRate + durationMin * pricing.perMinRate) *
+    multiplier;
+  if (isOuterZone) fareBGN *= pricing.outerSurchargeMultiplier;
+  return Math.max(pricing.minimumFare, Math.round(fareBGN * 100) / 100);
 }

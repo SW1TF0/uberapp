@@ -1,19 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { MapPin, Search } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { CITY_CENTER, DEFAULT_REGION } from '../../data/kardzhaliRegion';
-import {
-  DirectionsResult,
-  PlacePrediction,
-  fetchDirections,
-  getPlaceCoordinates,
-  searchPlaces,
-} from '../../services/googleMaps';
+import { DirectionsResult, PlacePrediction, fetchDirections, searchPlaces } from '../../services/freeMaps';
+import { LeafletMap } from '../../components/LeafletMap';
 import { GeoPoint } from '../../types/models';
 
 type Props = NativeStackScreenProps<RiderStackParamList, 'DestinationPicker'>;
@@ -47,11 +41,13 @@ export default function DestinationPickerScreen({ navigation }: Props) {
       return undefined;
     }
     setSearching(true);
+    // Nominatim's usage policy asks for at most ~1 request/second; 600ms
+    // keeps normal typing comfortably under that.
     debounceRef.current = setTimeout(async () => {
       const results = await searchPlaces(query);
       setPredictions(results);
       setSearching(false);
-    }, 350);
+    }, 600);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
@@ -59,11 +55,13 @@ export default function DestinationPickerScreen({ navigation }: Props) {
 
   const selectPrediction = useCallback(
     async (prediction: PlacePrediction) => {
-      setSearching(true);
-      const coords = await getPlaceCoordinates(prediction.placeId);
+      // Nominatim's search results already include coordinates, so unlike
+      // Google Places there's no separate "place details" round trip.
+      const coords: GeoPoint = { lat: prediction.lat, lng: prediction.lng, address: prediction.mainText };
       setDropoff(coords);
       setPredictions([]);
       setQuery(prediction.mainText);
+      setSearching(true);
       const directions = await fetchDirections(pickup, coords);
       setRoute(directions);
       setSearching(false);
@@ -115,27 +113,21 @@ export default function DestinationPickerScreen({ navigation }: Props) {
 
       {dropoff && (
         <>
-          <MapView style={styles.map} provider={PROVIDER_DEFAULT} initialRegion={DEFAULT_REGION}>
-            <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor={colors.primary} />
-            <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor={colors.danger} />
-            {route ? (
-              <Polyline
-                coordinates={route.polyline.map((p) => ({ latitude: p.lat, longitude: p.lng }))}
-                strokeColor={colors.primary}
-                strokeWidth={4}
-              />
-            ) : (
-              <Polyline
-                coordinates={[
-                  { latitude: pickup.lat, longitude: pickup.lng },
-                  { latitude: dropoff.lat, longitude: dropoff.lng },
-                ]}
-                strokeColor={colors.textMuted}
-                strokeWidth={2}
-                lineDashPattern={[6, 6]}
-              />
-            )}
-          </MapView>
+          <LeafletMap
+            style={styles.map}
+            region={{
+              latitude: (pickup.lat + dropoff.lat) / 2,
+              longitude: (pickup.lng + dropoff.lng) / 2,
+              latitudeDelta: DEFAULT_REGION.latitudeDelta,
+              longitudeDelta: DEFAULT_REGION.longitudeDelta,
+            }}
+            markers={[
+              { id: 'pickup', lat: pickup.lat, lng: pickup.lng, color: colors.primary },
+              { id: 'dropoff', lat: dropoff.lat, lng: dropoff.lng, color: colors.danger },
+            ]}
+            polyline={route ? route.polyline : [pickup, dropoff]}
+            polylineDashed={!route}
+          />
           <View style={styles.confirmBar}>
             {route && (
               <Text style={styles.routeInfo}>

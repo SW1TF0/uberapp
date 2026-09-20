@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import database from '@react-native-firebase/database';
 import { Star } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,9 +7,9 @@ import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
-import { fetchDirections } from '../../services/googleMaps';
-import { DriverRecord } from '../../types/models';
-import { AnimatedDriverMarker } from '../../components/AnimatedDriverMarker';
+import { fetchDirections } from '../../services/freeMaps';
+import { DriverRecord, GeoPoint } from '../../types/models';
+import { LeafletMap } from '../../components/LeafletMap';
 
 type Props = NativeStackScreenProps<RiderStackParamList, 'LiveTrip'>;
 
@@ -24,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default function LiveTripScreen({ navigation }: Props) {
   const { activeRide, cancelRide, rateRide } = useRideDispatch();
   const [driver, setDriver] = useState<DriverRecord | null>(null);
-  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
+  const [routeCoords, setRouteCoords] = useState<GeoPoint[]>([]);
   const [rating, setRating] = useState(5);
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export default function LiveTripScreen({ navigation }: Props) {
     if (!activeRide || !driver?.location) return;
     const target = activeRide.status === 'in_progress' ? activeRide.dropoff : activeRide.pickup;
     fetchDirections(driver.location, target).then((result) => {
-      if (result) setRouteCoords(result.polyline.map((p) => ({ latitude: p.lat, longitude: p.lng })));
+      if (result) setRouteCoords(result.polyline);
     });
   }, [activeRide?.status, driver?.location?.lat, driver?.location?.lng]);
 
@@ -96,26 +95,15 @@ export default function LiveTripScreen({ navigation }: Props) {
 
   return (
     <View style={styles.flex}>
-      <MapView style={styles.flex} provider={PROVIDER_DEFAULT} initialRegion={DEFAULT_REGION}>
-        <Marker
-          coordinate={{ latitude: activeRide.pickup.lat, longitude: activeRide.pickup.lng }}
-          pinColor={colors.primary}
-          title="Качване"
-        />
-        <Marker
-          coordinate={{ latitude: activeRide.dropoff.lat, longitude: activeRide.dropoff.lng }}
-          pinColor={colors.danger}
-          title="Дестинация"
-        />
-        {driver?.location && (
-          <AnimatedDriverMarker
-            lat={driver.location.lat}
-            lng={driver.location.lng}
-            rotation={driver.location.heading ?? 0}
-          />
-        )}
-        {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeColor={colors.primary} strokeWidth={4} />}
-      </MapView>
+      <LeafletMap
+        region={DEFAULT_REGION}
+        markers={[
+          { id: 'pickup', lat: activeRide.pickup.lat, lng: activeRide.pickup.lng, color: colors.primary },
+          { id: 'dropoff', lat: activeRide.dropoff.lat, lng: activeRide.dropoff.lng, color: colors.danger },
+        ]}
+        driverMarkers={driver?.location ? [{ id: 'driver', lat: driver.location.lat, lng: driver.location.lng }] : []}
+        polyline={routeCoords}
+      />
 
       <View style={styles.banner}>
         <Text style={styles.bannerTitle}>{STATUS_LABEL[activeRide.status] || activeRide.status}</Text>

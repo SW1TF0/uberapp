@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import database from '@react-native-firebase/database';
 import { User } from 'lucide-react-native';
@@ -10,7 +9,7 @@ import { colors } from '../../theme/colors';
 import { CITY_CENTER, DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useAuth } from '../../hooks/useAuth';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
-import { AnimatedDriverMarker } from '../../components/AnimatedDriverMarker';
+import { LeafletMap } from '../../components/LeafletMap';
 import { DriverRecord } from '../../types/models';
 
 type Props = NativeStackScreenProps<RiderStackParamList, 'RiderMap'>;
@@ -55,16 +54,16 @@ export default function RiderMapScreen({ navigation }: Props) {
 
   return (
     <View style={styles.flex}>
-      <MapView style={styles.flex} provider={PROVIDER_DEFAULT} initialRegion={DEFAULT_REGION}>
-        {drivers.map((d) => (
-          <AnimatedDriverMarker
-            key={d.id}
-            lat={d.location!.lat}
-            lng={d.location!.lng}
-            rotation={d.location!.heading ?? 0}
-          />
-        ))}
-      </MapView>
+      <LeafletMap
+        region={{
+          latitude: myLocation.latitude,
+          longitude: myLocation.longitude,
+          latitudeDelta: DEFAULT_REGION.latitudeDelta,
+          longitudeDelta: DEFAULT_REGION.longitudeDelta,
+        }}
+        markers={[{ id: 'me', lat: myLocation.latitude, lng: myLocation.longitude, color: colors.primary }]}
+        driverMarkers={drivers.map((d) => ({ id: d.id, lat: d.location!.lat, lng: d.location!.lng }))}
+      />
 
       <View style={styles.topBar}>
         <Text style={styles.greeting}>Здравей, {profile?.name?.split(' ')[0] || 'приятел'} 👋</Text>

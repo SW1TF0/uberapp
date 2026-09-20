@@ -16,13 +16,13 @@ export default function WelcomeScreen({ navigation }: Props) {
       <View style={styles.actions}>
         <Pressable
           style={styles.primaryButton}
-          onPress={() => navigation.navigate('PhoneLogin', { role: 'rider' })}
+          onPress={() => navigation.navigate('EmailAuth', { role: 'rider' })}
         >
           <Text style={styles.primaryLabel}>Продължи като пътник</Text>
         </Pressable>
         <Pressable
           style={styles.secondaryButton}
-          onPress={() => navigation.navigate('PhoneLogin', { role: 'driver' })}
+          onPress={() => navigation.navigate('EmailAuth', { role: 'driver' })}
         >
           <Text style={styles.secondaryLabel}>Продължи като шофьор</Text>
         </Pressable>
