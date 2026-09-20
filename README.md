@@ -145,6 +145,16 @@ eas env:set --scope project --name GOOGLE_SERVICES_JSON --type file --value ./go
 
 I haven't been able to run or test any of this against a live Firebase project, a real device/simulator, or the public Nominatim/OSRM endpoints from a running app in this sandbox — there's no Firebase project, billing-free or not, and no mobile runtime available here. Everything type-checks cleanly (`npx tsc --noEmit` in `mobile/`, zero errors), and the JSON files (`database.rules.json`, `sample-database.json`) are verified valid JSON, but treat the actual on-device/on-Firebase behavior as unverified until you run it yourself.
 
+### iOS
+
+The app's code and config already target iOS — `mobile/app.config.js` has an iOS bundle id, `GoogleService-Info.plist` wiring, location/photo-library permission strings, and the CocoaPods settings `@react-native-firebase` needs (`useFrameworks: 'static'`). Add an iOS app in Firebase Project Settings (step 4 above covers this) and upload `GoogleService-Info.plist` as `GOOGLE_SERVICES_INFO_PLIST` the same way as the Android file.
+
+**Building is free either way — installing on a real iPhone is not, and that's Apple's rule, not this app's.** Unlike Android, there's no such thing as "download an .ipa and tap install":
+
+- **Free option: iOS Simulator.** `eas build --platform ios --profile preview-ios-simulator` produces an unsigned `.app` that needs no Apple account at all. You then need a **Mac** with Xcode installed (Xcode itself is a free download) to drag the build into Simulator and run it there. No physical iPhone involved, and GPS/camera are simulated, but it's enough to see the UI and basic flow for free.
+- **Paid option: a real iPhone.** Apple requires enrolling in the **Apple Developer Program ($99/year)** to sign an app for any physical device — ad hoc install, TestFlight, or the App Store. There is no free tier of this, and no way around it (Apple's own free "sideload from Xcode" option below is the only exception, and it isn't practical for repeated testing). Once enrolled: `eas build --platform ios --profile preview` (add `"ios": {"distribution": "ad-hoc"}` to that profile once you've registered your device's UDID with `eas device:create`), or `eas build --platform ios --profile production` + `eas submit -p ios` for TestFlight.
+- **Also free, but needs a Mac + cable, and expires weekly:** open `mobile/` in Xcode with a free Apple ID signed in ("Personal Team"), plug your iPhone in via USB, and hit Run. Apple caps free signing at a 7-day certificate, so the app stops opening after a week until you reconnect and reinstall from Xcode. Not realistic for a family/friends test group, but workable for testing solo if you already own a Mac.
+
 ## Free-tier limitations, honestly
 
 - **Matching only runs while the rider's app is open.** No backend means no background retry — if the rider force-quits the app mid-search, matching stops.
