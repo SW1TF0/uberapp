@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import database from '@react-native-firebase/database';
+import { Flag } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DriverStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
@@ -9,6 +10,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { DirectionsResult, fetchDirections } from '../../services/freeMaps';
 import { LeafletMap } from '../../components/LeafletMap';
+import { ReportModal } from '../../components/ReportModal';
+import { submitReport } from '../../services/admin';
 import { formatDualCurrency } from '../../utils/currency';
 import { GeoPoint } from '../../types/models';
 
@@ -20,6 +23,7 @@ export default function DriverTripScreen({ navigation }: Props) {
   const [ownLocation, setOwnLocation] = useState<GeoPoint | null>(null);
   const [route, setRoute] = useState<DirectionsResult | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     if (!firebaseUser) return undefined;
@@ -135,6 +139,9 @@ export default function DriverTripScreen({ navigation }: Props) {
       />
 
       <View style={styles.banner}>
+        <Pressable style={styles.reportIconButton} onPress={() => setReportOpen(true)}>
+          <Flag size={16} color={colors.textMuted} />
+        </Pressable>
         <Text style={styles.bannerTitle}>
           {activeRide.status === 'in_progress' ? 'Към дестинацията' : 'Към пътника'}
         </Text>
@@ -144,6 +151,15 @@ export default function DriverTripScreen({ navigation }: Props) {
           </Text>
         )}
       </View>
+
+      <ReportModal
+        visible={reportOpen}
+        title="Докладвай пътника"
+        onClose={() => setReportOpen(false)}
+        onSubmit={(reason) =>
+          submitReport(firebaseUser?.uid ?? '', 'driver', activeRide.riderId, activeRide.id, reason)
+        }
+      />
 
       <View style={styles.actionBar}>
         {activeRide.status === 'accepted' && (
@@ -197,5 +213,14 @@ const styles = StyleSheet.create({
   banner: { position: 'absolute', top: 56, left: 20, right: 20, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
   bannerTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'center' },
   bannerMeta: { color: colors.textMuted, textAlign: 'center', marginTop: 6 },
+  reportIconButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: colors.card,
+    zIndex: 1,
+  },
   actionBar: { position: 'absolute', bottom: 30, left: 20, right: 20 },
 });

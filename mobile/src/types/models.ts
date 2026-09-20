@@ -20,6 +20,10 @@ export type UserProfile = {
   createdAt: number;
   avatarUrl?: string;
   notificationsEnabled?: boolean;
+  // Admin-only field (see database.rules.json) — a client can never set
+  // this to true itself, and a banned rider/driver is blocked server-side
+  // from creating rides, accepting rides, or going online.
+  banned?: boolean;
 };
 
 export type DriverVehicle = {
@@ -49,6 +53,10 @@ export type DriverRecord = {
   };
   status: DriverStatus;
   location: DriverLocation | null;
+  // Admin bookkeeping: completed rides after this timestamp are what the
+  // driver currently owes the platform in commission; set by the admin
+  // panel's "mark as settled" action, which just bumps this to now.
+  settledUpTo?: number;
 };
 
 export type GeoPoint = {
@@ -139,4 +147,14 @@ export type Transaction = {
   driverEarningsBGN: number;
   currency: 'BGN';
   completedAt: number;
+};
+
+export type Report = {
+  id: string;
+  reporterId: string;
+  reporterRole: Role;
+  reportedId: string;
+  rideId: string | null;
+  reason: string;
+  createdAt: number;
 };

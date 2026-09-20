@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import database from '@react-native-firebase/database';
-import { Star } from 'lucide-react-native';
+import { Flag, Star } from 'lucide-react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
@@ -23,9 +23,11 @@ import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { useRiderRideNotifications } from '../../hooks/useRideNotifications';
 import { fetchDirections } from '../../services/freeMaps';
 import { createCardPaymentIntent } from '../../services/payments';
+import { submitReport } from '../../services/admin';
 import { formatDualCurrency } from '../../utils/currency';
 import { DriverRecord, GeoPoint } from '../../types/models';
 import { LeafletMap } from '../../components/LeafletMap';
+import { ReportModal } from '../../components/ReportModal';
 
 type Props = NativeStackScreenProps<RiderStackParamList, 'LiveTrip'>;
 
@@ -48,6 +50,7 @@ export default function LiveTripScreen({ navigation }: Props) {
   const [cancelling, setCancelling] = useState(false);
   const [payingCard, setPayingCard] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   async function handleCancel() {
     setCancelling(true);
@@ -263,9 +266,23 @@ export default function LiveTripScreen({ navigation }: Props) {
               {driver.profile.vehicle.plate}
             </Text>
             </View>
+            <Pressable style={styles.reportIconButton} onPress={() => setReportOpen(true)}>
+              <Flag size={16} color={colors.textMuted} />
+            </Pressable>
           </View>
         )}
       </View>
+
+      {activeRide.driverId && (
+        <ReportModal
+          visible={reportOpen}
+          title="Докладвай шофьора"
+          onClose={() => setReportOpen(false)}
+          onSubmit={(reason) =>
+            submitReport(activeRide.riderId, 'rider', activeRide.driverId as string, activeRide.id, reason)
+          }
+        />
+      )}
 
       {['requested', 'accepted'].includes(activeRide.status) && (
         <Pressable style={styles.cancelButton} onPress={handleCancel} disabled={cancelling}>
@@ -320,6 +337,7 @@ const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   driverName: { color: colors.text, fontWeight: '600' },
   driverVehicle: { color: colors.textMuted, marginTop: 4 },
+  reportIconButton: { padding: 8, borderRadius: 10, backgroundColor: colors.surface },
   completedDriverRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 20 },
   completedDriverName: { color: colors.text, fontWeight: '600', fontSize: 15 },
   avatar: { width: 48, height: 48, borderRadius: 24 },

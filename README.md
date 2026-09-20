@@ -45,8 +45,9 @@ mobile/
 
 ## Data model (Realtime Database)
 
-- `/users/{uid}` — `{ uid, role: 'rider'|'driver', name, phone, email, createdAt, avatarUrl?, notificationsEnabled? }`
-- `/drivers/{uid}` — `{ profile: { name, phone, rating, ratingCount, vehicle, avatarUrl? }, status: 'offline'|'online'|'busy', location: { lat, lng, heading, speed, updatedAt } }`. Keyed by the driver's own auth uid, so rules stay simple. `rating`/`ratingCount` are self-written by the driver's own app (see "Reviews & ratings" below) — riders never write to another user's driver node.
+- `/users/{uid}` — `{ uid, role: 'rider'|'driver', name, phone, email, createdAt, avatarUrl?, notificationsEnabled?, banned? }`. `banned` is admin-only-writable — see "Admin panel" below.
+- `/drivers/{uid}` — `{ profile: { name, phone, rating, ratingCount, vehicle, avatarUrl? }, status: 'offline'|'online'|'busy', location: { lat, lng, heading, speed, updatedAt }, settledUpTo? }`. Keyed by the driver's own auth uid, so rules stay simple. `rating`/`ratingCount` are self-written by the driver's own app (see "Reviews & ratings" below) — riders never write to another user's driver node. `settledUpTo` (admin-only-writable) is a timestamp: completed rides after it are what the driver currently owes the platform.
+- `/reports/{reportId}` — `{ reporterId, reporterRole, reportedId, rideId, reason, createdAt }`. Anyone can create one about themselves; only the admin account can read the list back. See "Admin panel" below.
 - `/rides/{rideId}` — full ride lifecycle document (`pickup`, `dropoff`, `status`, fare fields, timestamps, `rating`, `reviewText`). `status` moves `requested → accepted → arrived → in_progress → completed` (or `cancelled` at any point before `completed`). On completion also carries `platformFeeBGN`/`driverEarningsBGN` (see "Platform commission" below). For card rides, also `paymentStatus`/`stripePaymentIntentId` — see "Card payments" below; these two fields can only ever be written by the Stripe Cloud Functions (Admin SDK), never by a client.
 - `/rides/{rideId}/matching` — matching bookkeeping (`offeredDriverId`, `offeredAt`, `expiresAt`, `excludedDriverIds`), written by the rider's own client (see below).
 - `/driverRequests/{driverId}/{rideId}` — fan-out ride offer a driver currently has open. Written by the rider's client when it matches them, resolved (accepted/declined) by the driver client.
@@ -144,6 +145,51 @@ Setup:
 8. Rebuild (`eas build --platform android --profile preview`) and test a card ride end to end with the `4242...` test card.
 9. When ready for real money: flip Stripe out of test mode, generate **live** keys (`pk_live_...`/`sk_live_...`), repeat steps 4–7 with those, and add a live webhook endpoint (test and live mode each need their own).
 
+## Admin panel
+
+One hardcoded account — currently `krasimiruzun@smartmenukj.com` (see
+`mobile/src/config/admin.ts` — change it there and in every matching
+`auth.token.email === '...'` check in `database.rules.json` if you ever
+need a different admin email) — gets a completely different app experience
+after logging in: `RootNavigator` checks the signed-in Firebase user's
+email before anything else and routes straight to an admin section
+instead of the normal rider/driver screens. Nobody else can reach it, and
+the enforcement isn't just hiding a button — `database.rules.json` grants
+the broad reads/writes this needs (listing every user, banning someone,
+marking a driver's dues settled) only when `auth.token.email` matches that
+exact string, checked server-side on every request regardless of what the
+app's UI does.
+
+**Setting up the admin account:** don't sign up through the app (that
+forces you through the rider/driver profile flow, which the admin path
+skips entirely). Instead, in the Firebase console → Authentication →
+Users → **Add user**, enter the admin email and password directly. Then
+just sign in from the app's normal Welcome → EmailAuth screen using the
+"Вход" (sign in) tab.
+
+What it can do:
+- **Шофьори (Drivers)** — every driver, their vehicle, rating, and how
+  much platform commission they currently owe (the sum of `platformFeeBGN`
+  across their completed cash rides since the last time they were marked
+  settled — there's no automated payout here, this is meant for an admin
+  collecting that cash periodically). A "Платено" button resets the
+  counter; a "Бани"/"Отбани" button toggles the ban.
+- **Клиенти (Clients)** — every rider, with the same ban/unban toggle.
+- **Жалби (Reports)** — every report riders/drivers have filed against
+  each other (see below).
+
+**Bans are enforced server-side**, not just hidden in the UI: a banned
+rider's ride-creation write is rejected by `database.rules.json`, and a
+banned driver can no longer set their own status to `'online'` (so they
+stop receiving new offers). A banned user who's still signed in sees a
+dedicated "profile suspended" screen instead of the normal app.
+
+**Reports:** both the rider's live-trip screen and the driver's trip
+screen have a small flag-icon button that opens a short "what happened"
+form and writes to `/reports`, visible only to the admin. This is
+report-only — no automatic action is taken; the admin reviews reports and
+manually bans someone if warranted.
+
 ## Security rules
 
 `firebase/database.rules.json` enforces:
@@ -154,7 +200,8 @@ Setup:
 - `driverRequests/{driverId}/{rideId}` is writable by that driver, or by the rider of the ride referenced in it (to create/withdraw an offer).
 - `pricing_rules` is read-only to clients (there's no writer in the free-tier setup — see it as a one-time admin console edit, not something the app changes).
 - `transactions`/`riderHistory`/`driverHistory` are writable only by the completing driver, for a ride already marked `completed`, and readable only by that ride's own rider/driver.
-- `/users/{uid}` accepts `avatarUrl` and `notificationsEnabled` as additional self-writable fields alongside the original ones; anything else is still rejected by its catch-all deny rule.
+- `/users/{uid}` accepts `avatarUrl` and `notificationsEnabled` as additional self-writable fields alongside the original ones; anything else is still rejected by its catch-all deny rule. `banned` is the one exception that's readable/self-writable-only-as-a-no-op — a normal write can never actually change it, only a write from the admin account (matched by `auth.token.email`) can.
+- The admin account (see "Admin panel" above) additionally gets read access to all of `/users`, `/rides`, and `/driverHistory/*` (needed to list every driver/client and compute what each driver owes), and is the only account that can write `/drivers/{uid}/settledUpTo` or read `/reports` back (anyone can write their own report there, but only the admin can read the list).
 
 Deploy with the Firebase CLI from `firebase/`:
 ```

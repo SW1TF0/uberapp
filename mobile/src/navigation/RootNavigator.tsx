@@ -5,7 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { useAuth } from '../hooks/useAuth';
 
-import { AuthStackParamList, DriverStackParamList, RiderStackParamList } from './types';
+import { AdminStackParamList, AuthStackParamList, DriverStackParamList, RiderStackParamList } from './types';
+import { ADMIN_EMAIL } from '../config/admin';
 
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import EmailAuthScreen from '../screens/auth/EmailAuthScreen';
@@ -21,12 +22,19 @@ import DriverDashboardScreen from '../screens/driver/DriverDashboardScreen';
 import DriverTripScreen from '../screens/driver/DriverTripScreen';
 import DriverEarningsScreen from '../screens/driver/DriverEarningsScreen';
 
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminDriversScreen from '../screens/admin/AdminDriversScreen';
+import AdminClientsScreen from '../screens/admin/AdminClientsScreen';
+import AdminReportsScreen from '../screens/admin/AdminReportsScreen';
+
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
+import BannedScreen from '../screens/shared/BannedScreen';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const RiderStack = createNativeStackNavigator<RiderStackParamList>();
 const DriverStack = createNativeStackNavigator<DriverStackParamList>();
+const AdminStack = createNativeStackNavigator<AdminStackParamList>();
 
 const screenOptions = {
   headerStyle: { backgroundColor: colors.background },
@@ -83,6 +91,17 @@ function DriverNavigator() {
   );
 }
 
+function AdminNavigator() {
+  return (
+    <AdminStack.Navigator screenOptions={screenOptions}>
+      <AdminStack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ headerShown: false }} />
+      <AdminStack.Screen name="AdminDrivers" component={AdminDriversScreen} options={{ title: '' }} />
+      <AdminStack.Screen name="AdminClients" component={AdminClientsScreen} options={{ title: '' }} />
+      <AdminStack.Screen name="AdminReports" component={AdminReportsScreen} options={{ title: '' }} />
+    </AdminStack.Navigator>
+  );
+}
+
 export default function RootNavigator() {
   const { loading, firebaseUser, profile } = useAuth();
 
@@ -94,10 +113,21 @@ export default function RootNavigator() {
     );
   }
 
+  // The admin account has no /users profile at all (it's created directly
+  // in the Firebase console, not through sign-up) — checked by email
+  // before anything else needs `profile` to exist.
+  const isAdmin = firebaseUser?.email === ADMIN_EMAIL;
+
   return (
     <NavigationContainer>
-      {!firebaseUser || !profile ? (
+      {!firebaseUser ? (
         <AuthNavigator />
+      ) : isAdmin ? (
+        <AdminNavigator />
+      ) : !profile ? (
+        <AuthNavigator />
+      ) : profile.banned ? (
+        <BannedScreen />
       ) : profile.role === 'driver' ? (
         <DriverNavigator />
       ) : (

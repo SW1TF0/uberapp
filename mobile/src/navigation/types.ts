@@ -23,3 +23,10 @@ export type DriverStackParamList = {
   Profile: undefined;
   Settings: undefined;
 };
+
+export type AdminStackParamList = {
+  AdminDashboard: undefined;
+  AdminDrivers: undefined;
+  AdminClients: undefined;
+  AdminReports: undefined;
+};

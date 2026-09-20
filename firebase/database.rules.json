@@ -4,9 +4,10 @@
     ".write": false,
 
     "users": {
+      ".read": "auth != null && auth.token.email === 'krasimiruzun@smartmenukj.com'",
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'krasimiruzun@smartmenukj.com')",
+        ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'krasimiruzun@smartmenukj.com')",
         ".validate": "newData.hasChildren(['uid','role','name','phone','email','createdAt'])",
         "uid": {
           ".validate": "newData.isString() && newData.val() === $uid"
@@ -31,6 +32,9 @@
         },
         "notificationsEnabled": {
           ".validate": "newData.isBoolean()"
+        },
+        "banned": {
+          ".validate": "newData.isBoolean() && (newData.val() === data.val() || auth.token.email === 'krasimiruzun@smartmenukj.com')"
         },
         "$other": {
           ".validate": false
@@ -61,7 +65,7 @@
 
         "status": {
           ".write": "auth != null && auth.uid === $driverId",
-          ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'offline' || newData.val() === 'busy')"
+          ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'offline' || newData.val() === 'busy') && (newData.val() !== 'online' || root.child('users').child($driverId).child('banned').val() !== true)"
         },
 
         "location": {
@@ -72,6 +76,11 @@
           "heading": { ".validate": "newData.isNumber() || newData.val() === null" },
           "speed": { ".validate": "newData.isNumber() || newData.val() === null" },
           "updatedAt": { ".validate": "newData.isNumber()" }
+        },
+
+        "settledUpTo": {
+          ".write": "auth != null && auth.token.email === 'krasimiruzun@smartmenukj.com'",
+          ".validate": "newData.isNumber()"
         }
       }
     },
@@ -90,8 +99,8 @@
     "rides": {
       ".indexOn": ["riderId", "driverId", "status"],
       "$rideId": {
-        ".read": "auth != null && (data.child('riderId').val() === auth.uid || data.child('driverId').val() === auth.uid)",
-        ".write": "auth != null && ((!data.exists() && newData.child('riderId').val() === auth.uid && newData.child('status').val() === 'requested') || (data.exists() && data.child('riderId').val() === auth.uid && (newData.child('status').val() === 'cancelled' || data.child('status').val() === newData.child('status').val())) || (data.exists() && data.child('driverId').val() === auth.uid) || (data.exists() && data.child('status').val() === 'requested' && data.child('driverId').val() === null && newData.child('driverId').val() === auth.uid && newData.child('status').val() === 'accepted' && root.child('drivers').child(auth.uid).child('status').val() === 'online'))",
+        ".read": "auth != null && (data.child('riderId').val() === auth.uid || data.child('driverId').val() === auth.uid || auth.token.email === 'krasimiruzun@smartmenukj.com')",
+        ".write": "auth != null && ((!data.exists() && newData.child('riderId').val() === auth.uid && newData.child('status').val() === 'requested' && root.child('users').child(auth.uid).child('banned').val() !== true) || (data.exists() && data.child('riderId').val() === auth.uid && (newData.child('status').val() === 'cancelled' || data.child('status').val() === newData.child('status').val())) || (data.exists() && data.child('driverId').val() === auth.uid) || (data.exists() && data.child('status').val() === 'requested' && data.child('driverId').val() === null && newData.child('driverId').val() === auth.uid && newData.child('status').val() === 'accepted' && root.child('drivers').child(auth.uid).child('status').val() === 'online' && root.child('users').child(auth.uid).child('banned').val() !== true))",
 
         "riderId": { ".validate": "newData.isString()" },
         "driverId": { ".validate": "newData.val() === null || newData.isString()" },
@@ -149,10 +158,24 @@
 
     "driverHistory": {
       "$driverId": {
-        ".read": "auth != null && auth.uid === $driverId",
+        ".read": "auth != null && (auth.uid === $driverId || auth.token.email === 'krasimiruzun@smartmenukj.com')",
         "$rideId": {
           ".write": "auth != null && auth.uid === $driverId"
         }
+      }
+    },
+
+    "reports": {
+      ".read": "auth != null && auth.token.email === 'krasimiruzun@smartmenukj.com'",
+      "$reportId": {
+        ".write": "auth != null && !data.exists() && newData.child('reporterId').val() === auth.uid",
+        ".validate": "newData.hasChildren(['reporterId','reporterRole','reportedId','reason','createdAt'])",
+        "reporterId": { ".validate": "newData.isString()" },
+        "reporterRole": { ".validate": "newData.isString() && (newData.val() === 'rider' || newData.val() === 'driver')" },
+        "reportedId": { ".validate": "newData.isString()" },
+        "rideId": { ".validate": "newData.val() === null || newData.isString()" },
+        "reason": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 1000" },
+        "createdAt": { ".validate": "newData.isNumber()" }
       }
     }
   }
