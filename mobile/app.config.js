@@ -46,6 +46,13 @@ module.exports = {
             'Kardzhali Ride споделя местоположението ти с пътниците, докато си онлайн като шофьор.',
         },
       ],
+      [
+        'expo-splash-screen',
+        {
+          backgroundColor: '#0B1F3A',
+          resizeMode: 'contain',
+        },
+      ],
     ],
     extra: {
       eas: {
