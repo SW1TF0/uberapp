@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import * as Location from 'expo-location';
 import database from '@react-native-firebase/database';
-import { User } from 'lucide-react-native';
+import { History, User } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
@@ -67,14 +67,19 @@ export default function RiderMapScreen({ navigation }: Props) {
 
       <View style={styles.topBar}>
         <Text style={styles.greeting}>Здравей, {profile?.name?.split(' ')[0] || 'приятел'} 👋</Text>
-        <Pressable style={styles.iconButton} onPress={() => navigation.navigate('Profile')}>
-          <User size={20} color={colors.text} />
-        </Pressable>
+        <View style={styles.topBarIcons}>
+          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('RideHistory')}>
+            <History size={20} color={colors.text} />
+          </Pressable>
+          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('Profile')}>
+            <User size={20} color={colors.text} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.sheet}>
         <Pressable style={styles.searchBar} onPress={() => navigation.navigate('DestinationPicker')}>
-          <Text style={styles.searchPlaceholder}>Накъде отиваш? · Where to?</Text>
+          <Text style={styles.searchPlaceholder}>Накъде отиваш?</Text>
         </Pressable>
         <Text style={styles.driverCount}>{drivers.length} шофьора онлайн в Кърджали</Text>
       </View>
@@ -102,6 +107,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
   },
+  topBarIcons: { flexDirection: 'row', gap: 10 },
   iconButton: { backgroundColor: colors.surface, padding: 10, borderRadius: 12 },
   sheet: {
     position: 'absolute',

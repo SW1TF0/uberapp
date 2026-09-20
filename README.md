@@ -30,7 +30,7 @@ mobile/
   src/components/LeafletMap.tsx  WebView + Leaflet + OSM tiles (free, no key)
   src/navigation/            RootNavigator + Auth/Rider/Driver stacks
   src/screens/auth/          Welcome, email sign up/in, profile+vehicle setup
-  src/screens/rider/         Live map, destination picker, ride confirm, live trip
+  src/screens/rider/         Live map, destination picker, ride confirm, live trip, ride history
   src/screens/driver/        Dashboard (online toggle), turn-by-turn trip screen
   src/screens/shared/        Profile (sign out)
   src/components/            LeafletMap, IncomingRequestOverlay (15s timer)
@@ -137,4 +137,4 @@ Accepting an offer sets `/drivers/{uid}/status` to `busy` (so the driver stops r
 
 ## Status
 
-Firebase schema/rules, sync hooks (auth, live driver location, ride dispatch), Rider UI, Driver UI, and matching/fare logic are all built and running client-side on the free stack described above; the equivalent Cloud Functions exist as an optional, unused-by-default upgrade path. What this repo does *not* include, since it wasn't asked for: push notifications, in-app card payment processing (the "Card" option is recorded but nothing actually charges a card), an admin dashboard, or a rider-facing ride-history screen (the data for one — `/riderHistory` — already exists).
+Firebase schema/rules, sync hooks (auth, live driver location, ride dispatch), Rider UI (including ride history), Driver UI, and matching/fare logic are all built and running client-side on the free stack described above, with the UI in Bulgarian throughout; the equivalent Cloud Functions exist as an optional, unused-by-default upgrade path. What this repo does *not* include, since it wasn't asked for: push notifications, in-app card payment processing (the "Card" option is recorded but nothing actually charges a card), an admin dashboard, or a driver-facing earnings/history screen (the data for one — `/driverHistory` — already exists).

@@ -9,9 +9,9 @@ import { VehicleType } from '../../types/models';
 type Props = NativeStackScreenProps<AuthStackParamList, 'ProfileSetup'>;
 
 const VEHICLE_TYPES: { type: VehicleType; label: string }[] = [
-  { type: 'economy', label: 'Economy' },
-  { type: 'comfort', label: 'Comfort' },
-  { type: 'xl', label: 'XL' },
+  { type: 'economy', label: 'Икономична' },
+  { type: 'comfort', label: 'Комфорт' },
+  { type: 'xl', label: 'Голяма (XL)' },
 ];
 
 export default function ProfileSetupScreen({ route }: Props) {

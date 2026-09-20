@@ -15,6 +15,7 @@ import RiderMapScreen from '../screens/rider/RiderMapScreen';
 import DestinationPickerScreen from '../screens/rider/DestinationPickerScreen';
 import RideConfirmScreen from '../screens/rider/RideConfirmScreen';
 import LiveTripScreen from '../screens/rider/LiveTripScreen';
+import RideHistoryScreen from '../screens/rider/RideHistoryScreen';
 
 import DriverDashboardScreen from '../screens/driver/DriverDashboardScreen';
 import DriverTripScreen from '../screens/driver/DriverTripScreen';
@@ -57,6 +58,7 @@ function RiderNavigator() {
         component={LiveTripScreen}
         options={{ headerShown: false, gestureEnabled: false }}
       />
+      <RiderStack.Screen name="RideHistory" component={RideHistoryScreen} options={{ title: '' }} />
       <RiderStack.Screen name="Profile" component={ProfileScreen} options={{ title: '' }} />
     </RiderStack.Navigator>
   );

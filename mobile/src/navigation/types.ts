@@ -11,6 +11,7 @@ export type RiderStackParamList = {
   DestinationPicker: undefined;
   RideConfirm: { pickup: GeoPoint; dropoff: GeoPoint };
   LiveTrip: undefined;
+  RideHistory: undefined;
   Profile: undefined;
 };
 
