@@ -17,27 +17,30 @@ export function useAuth() {
 
   const confirmationRef = useRef<FirebaseAuthTypes.ConfirmationResult | null>(null);
 
+  // `loading` only tracks whether we've heard from Firebase Auth at least
+  // once (the initial app-boot check for a cached session). It must NOT be
+  // re-triggered on every later sign-in, or RootNavigator's top-level
+  // loading/AuthStack switch would unmount the auth navigator mid-flow
+  // (e.g. right after OTP confirmation, wiping the in-flight
+  // navigation.replace('ProfileSetup', ...) call). Which stack to show
+  // afterwards is driven entirely by `profile` being null or not.
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged((user) => {
       setFirebaseUser(user);
-      if (!user) {
-        setProfile(null);
-        setLoading(false);
-      }
+      if (!user) setProfile(null);
+      setLoading(false);
     });
     return unsubscribeAuth;
   }, [setFirebaseUser, setProfile, setLoading]);
 
   useEffect(() => {
     if (!firebaseUser) return undefined;
-    setLoading(true);
     const profileRef = database().ref(`/users/${firebaseUser.uid}`);
     const onValueChange = profileRef.on('value', (snapshot) => {
       setProfile(snapshot.exists() ? (snapshot.val() as UserProfile) : null);
-      setLoading(false);
     });
     return () => profileRef.off('value', onValueChange);
-  }, [firebaseUser, setProfile, setLoading]);
+  }, [firebaseUser, setProfile]);
 
   const sendOtp = useCallback(async (phoneNumber: string): Promise<void> => {
     const confirmation = await auth().signInWithPhoneNumber(phoneNumber);

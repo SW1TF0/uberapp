@@ -30,6 +30,7 @@
     },
 
     "drivers": {
+      ".indexOn": ["status"],
       "$driverId": {
         ".read": "auth != null",
 

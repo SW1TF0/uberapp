@@ -4,7 +4,8 @@ A localized ride-hailing MVP for Kardzhali, Bulgaria. Expo/React Native
 (TypeScript) client on `@react-native-firebase` (Auth + Realtime Database),
 with Cloud Functions for driver matching and fare finalization.
 
-Built in phases; this repo currently has **Phase 1** and **Phase 2**.
+Built in phases; this repo currently has **Phase 1–4** (schema/rules, sync
+hooks, Rider UI, Driver UI). Phase 5 (Cloud Functions) is next.
 
 ## Repo layout
 
@@ -16,11 +17,19 @@ firebase/
   schema/sample-database.json  Reference snapshot of the DB shape, incl. seed data
   functions/                Cloud Functions source (Phase 5)
 mobile/
+  App.tsx                   Entry point
   src/firebase/firebase.ts  Typed @react-native-firebase auth/db instances
   src/types/models.ts       Shared TS types matching the DB schema
   src/store/                Zustand stores (auth, active ride/offer)
   src/hooks/                useAuth, useDriverLocation, useRideDispatch
   src/utils/fare.ts         Haversine distance + BGN fare estimate
+  src/services/googleMaps.ts  Places Autocomplete, Directions, Distance Matrix REST calls
+  src/navigation/            RootNavigator + Auth/Rider/Driver stacks
+  src/screens/auth/          Welcome, phone login, OTP, profile+vehicle setup
+  src/screens/rider/         Live map, destination picker, ride confirm, live trip
+  src/screens/driver/        Dashboard (online toggle), turn-by-turn trip screen
+  src/screens/shared/        Profile (sign out)
+  src/components/            AnimatedDriverMarker, IncomingRequestOverlay (15s timer)
 ```
 
 ## Data model (Realtime Database)
@@ -56,12 +65,15 @@ firebase deploy --only database
 4. `cd mobile && npm install`.
 5. **Important:** this app uses `@react-native-firebase` (native SDKs, required for phone auth), so it needs a custom dev client — it will **not** run in Expo Go. Build one with `npx expo prebuild` + `npx expo run:android` / `run:ios`, or `eas build --profile development`.
 6. Import `firebase/schema/sample-database.json` (or at least a `/pricing_rules` node) into your Realtime Database so fare estimates work.
+7. In Google Cloud Console (same or linked project), enable **Places API**, **Directions API**, and **Distance Matrix API**, then create a key. Put it in `mobile/.env` as `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` (copy `mobile/.env.example`) for the autocomplete/route/ETA calls, **and** separately in `mobile/app.json` under `android.config.googleMaps.apiKey` for the native Android Maps SDK. Without a key, the app still runs — search/autocomplete returns nothing and routes fall back to a straight dashed line between pickup and dropoff instead of a real road route.
 
-I haven't been able to run or test any of this against a live Firebase project or a real device/simulator in this environment — there's no Firebase project, Google Maps API key, or mobile runtime available here. The code is written to compile and to match the Firebase JS/Admin SDK APIs correctly, but treat the setup steps above as unverified until you run them yourself.
+I haven't been able to run or test any of this against a live Firebase project, a real device/simulator, or an actual Google Maps key in this environment — there's no Firebase project, Maps key, or mobile runtime available here. Everything type-checks cleanly (`npx tsc --noEmit` passes with zero errors across all four phases), but treat the setup steps above and the actual on-device behavior as unverified until you run them yourself.
+
+## Driver busy/online lifecycle (Phase 4 note)
+
+Accepting an offer sets `/drivers/{uid}/status` to `busy` (so the driver stops receiving new offers), and the driver's own client flips it back to `online` once their ride reaches `completed` or `cancelled` — always as a self-write, since the security rules only let a driver write their own status node. A rider can never write another user's driver status.
 
 ## What's next
 
 Type `NEXT` to continue with:
-- **Phase 3** — Rider UI (live map, destination picker + route polyline, ride request modal, live trip screen)
-- **Phase 4** — Driver UI (online toggle, incoming-request overlay with 15s timer, turn-by-turn trip screen)
 - **Phase 5** — Cloud Functions (nearest-driver matching within 5km, final fare calculation + history logging)

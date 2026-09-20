@@ -152,12 +152,20 @@ export function useRideDispatch() {
   const acceptOffer = useCallback(async (): Promise<void> => {
     if (!firebaseUser || !incomingOffer) return;
     const { rideId } = incomingOffer;
+
+    // The /rides write rule requires the driver's OWN /drivers/{uid}/status
+    // to still read 'online' at evaluation time, and Realtime Database
+    // rules evaluate `root` against the state the write would produce — so
+    // flipping the driver to 'busy' in the same multi-location update would
+    // make that check see 'busy' and reject the write. Do it as a second,
+    // separate call once the ride write has already succeeded.
     await database().ref(`/rides/${rideId}`).update({
       driverId: firebaseUser.uid,
       status: 'accepted',
       acceptedAt: Date.now(),
     });
     await database().ref(`/driverRequests/${firebaseUser.uid}`).remove();
+    await database().ref(`/drivers/${firebaseUser.uid}/status`).set('busy');
   }, [firebaseUser, incomingOffer]);
 
   const declineOffer = useCallback(async (): Promise<void> => {
