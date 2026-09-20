@@ -1,0 +1,106 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['uid','role','name','phone','createdAt'])",
+        "uid": {
+          ".validate": "newData.isString() && newData.val() === $uid"
+        },
+        "role": {
+          ".validate": "newData.isString() && (newData.val() === 'rider' || newData.val() === 'driver')"
+        },
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 80"
+        },
+        "phone": {
+          ".validate": "newData.isString()"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+
+    "drivers": {
+      "$driverId": {
+        ".read": "auth != null",
+
+        "profile": {
+          ".write": "auth != null && auth.uid === $driverId",
+          ".validate": "newData.hasChildren(['name','phone','rating','vehicle'])",
+          "rating": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 5"
+          },
+          "vehicle": {
+            ".validate": "newData.hasChildren(['make','model','color','plate','type'])",
+            "type": {
+              ".validate": "newData.isString() && (newData.val() === 'economy' || newData.val() === 'comfort' || newData.val() === 'xl')"
+            }
+          }
+        },
+
+        "status": {
+          ".write": "auth != null && auth.uid === $driverId",
+          ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'offline' || newData.val() === 'busy')"
+        },
+
+        "location": {
+          ".write": "auth != null && auth.uid === $driverId",
+          ".validate": "newData.hasChildren(['lat','lng','updatedAt'])",
+          "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+          "lng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+          "heading": { ".validate": "newData.isNumber() || newData.val() === null" },
+          "speed": { ".validate": "newData.isNumber() || newData.val() === null" },
+          "updatedAt": { ".validate": "newData.isNumber()" }
+        }
+      }
+    },
+
+    "driverRequests": {
+      "$driverId": {
+        ".read": "auth != null && auth.uid === $driverId",
+        ".write": "auth != null && auth.uid === $driverId",
+        "$rideId": {
+          ".validate": "newData.hasChildren(['rideId','offeredAt','expiresAt','pickupDistanceKm','fareEstimateBGN'])"
+        }
+      }
+    },
+
+    "rides": {
+      ".indexOn": ["riderId", "driverId", "status"],
+      "$rideId": {
+        ".read": "auth != null && (data.child('riderId').val() === auth.uid || data.child('driverId').val() === auth.uid)",
+        ".write": "auth != null && ((!data.exists() && newData.child('riderId').val() === auth.uid && newData.child('status').val() === 'requested') || (data.exists() && data.child('riderId').val() === auth.uid && (newData.child('status').val() === 'cancelled' || data.child('status').val() === newData.child('status').val())) || (data.exists() && data.child('driverId').val() === auth.uid) || (data.exists() && !data.child('driverId').val() && newData.child('driverId').val() === auth.uid && newData.child('status').val() === 'accepted' && root.child('drivers').child(auth.uid).child('status').val() === 'online'))",
+
+        "riderId": { ".validate": "newData.isString()" },
+        "driverId": { ".validate": "newData.val() === null || newData.isString()" },
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'requested' || newData.val() === 'accepted' || newData.val() === 'arrived' || newData.val() === 'in_progress' || newData.val() === 'completed' || newData.val() === 'cancelled')"
+        },
+        "pickup": { ".validate": "newData.hasChildren(['lat','lng'])" },
+        "dropoff": { ".validate": "newData.hasChildren(['lat','lng'])" },
+        "vehicleType": {
+          ".validate": "newData.isString() && (newData.val() === 'economy' || newData.val() === 'comfort' || newData.val() === 'xl')"
+        },
+        "paymentMethod": {
+          ".validate": "newData.isString() && (newData.val() === 'cash' || newData.val() === 'card')"
+        },
+        "fareEstimateBGN": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+        "finalFareBGN": { ".validate": "newData.val() === null || (newData.isNumber() && newData.val() >= 0)" }
+      }
+    },
+
+    "pricing_rules": {
+      ".read": "auth != null",
+      ".write": false
+    }
+  }
+}
