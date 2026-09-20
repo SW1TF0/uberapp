@@ -82,7 +82,7 @@
       ".indexOn": ["riderId", "driverId", "status"],
       "$rideId": {
         ".read": "auth != null && (data.child('riderId').val() === auth.uid || data.child('driverId').val() === auth.uid)",
-        ".write": "auth != null && ((!data.exists() && newData.child('riderId').val() === auth.uid && newData.child('status').val() === 'requested') || (data.exists() && data.child('riderId').val() === auth.uid && (newData.child('status').val() === 'cancelled' || data.child('status').val() === newData.child('status').val())) || (data.exists() && data.child('driverId').val() === auth.uid) || (data.exists() && data.child('status').val() === 'requested' && !data.child('driverId').val() && newData.child('driverId').val() === auth.uid && newData.child('status').val() === 'accepted' && root.child('drivers').child(auth.uid).child('status').val() === 'online'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('riderId').val() === auth.uid && newData.child('status').val() === 'requested') || (data.exists() && data.child('riderId').val() === auth.uid && (newData.child('status').val() === 'cancelled' || data.child('status').val() === newData.child('status').val())) || (data.exists() && data.child('driverId').val() === auth.uid) || (data.exists() && data.child('status').val() === 'requested' && data.child('driverId').val() === null && newData.child('driverId').val() === auth.uid && newData.child('status').val() === 'accepted' && root.child('drivers').child(auth.uid).child('status').val() === 'online'))",
 
         "riderId": { ".validate": "newData.isString()" },
         "driverId": { ".validate": "newData.val() === null || newData.isString()" },
