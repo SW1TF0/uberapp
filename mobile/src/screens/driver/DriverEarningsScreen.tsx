@@ -4,9 +4,7 @@ import { Star } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDualCurrency } from '../../utils/currency';
-import { computeDriverRatingStats, DriverReview } from '../../utils/reviews';
-import database from '@react-native-firebase/database';
-import { Ride } from '../../types/models';
+import { fetchDriverCompletedRides, DriverReview } from '../../utils/reviews';
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' });
@@ -24,32 +22,39 @@ export default function DriverEarningsScreen() {
   useEffect(() => {
     if (!firebaseUser) return;
     (async () => {
-      const stats = await computeDriverRatingStats(firebaseUser.uid);
-      setRating({ average: stats.average, count: stats.count });
-      setReviews(stats.reviews.filter((r) => !!r.reviewText));
+      try {
+        const rides = await fetchDriverCompletedRides(firebaseUser.uid);
+        const completed = rides.filter((r) => r.status === 'completed');
 
-      const snapshot = await database()
-        .ref('/rides')
-        .orderByChild('driverId')
-        .equalTo(firebaseUser.uid)
-        .once('value');
+        const ratedReviews: DriverReview[] = completed
+          .filter((r) => typeof r.rating === 'number')
+          .map((r) => ({
+            rideId: r.id,
+            rating: r.rating as number,
+            reviewText: r.reviewText ?? null,
+            completedAt: r.completedAt ?? 0,
+          }))
+          .sort((a, b) => b.completedAt - a.completedAt);
 
-      let earnings = 0;
-      let fees = 0;
-      let count = 0;
-      snapshot.forEach((child) => {
-        const ride = child.val() as Omit<Ride, 'id'>;
-        if (ride.status === 'completed') {
-          earnings += ride.driverEarningsBGN ?? 0;
-          fees += ride.platformFeeBGN ?? 0;
-          count += 1;
-        }
-        return undefined;
-      });
-      setTotalEarnings(Math.round(earnings * 100) / 100);
-      setTotalFees(Math.round(fees * 100) / 100);
-      setRideCount(count);
-      setLoading(false);
+        const average =
+          ratedReviews.length > 0
+            ? Math.round((ratedReviews.reduce((sum, r) => sum + r.rating, 0) / ratedReviews.length) * 100) / 100
+            : 5;
+        setRating({ average, count: ratedReviews.length });
+        setReviews(ratedReviews.filter((r) => !!r.reviewText));
+
+        let earnings = 0;
+        let fees = 0;
+        completed.forEach((r) => {
+          earnings += r.driverEarningsBGN ?? 0;
+          fees += r.platformFeeBGN ?? 0;
+        });
+        setTotalEarnings(Math.round(earnings * 100) / 100);
+        setTotalFees(Math.round(fees * 100) / 100);
+        setRideCount(completed.length);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [firebaseUser]);
 

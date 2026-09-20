@@ -39,10 +39,9 @@
     },
 
     "drivers": {
+      ".read": "auth != null",
       ".indexOn": ["status"],
       "$driverId": {
-        ".read": "auth != null",
-
         "profile": {
           ".write": "auth != null && auth.uid === $driverId",
           ".validate": "newData.hasChildren(['name','phone','rating','vehicle'])",
@@ -112,6 +111,14 @@
         "matching": {
           ".write": "auth != null && (root.child('rides').child($rideId).child('riderId').val() === auth.uid || data.child('offeredDriverId').val() === auth.uid)"
         }
+      }
+    },
+
+    "activeRides": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.val() === null || newData.isString()"
       }
     },
 

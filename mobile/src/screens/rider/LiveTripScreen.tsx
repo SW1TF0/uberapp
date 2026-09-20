@@ -34,7 +34,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function LiveTripScreen({ navigation }: Props) {
-  const { activeRide, cancelRide, rateRide } = useRideDispatch();
+  const { activeRide, cancelRide, rateRide, clearActiveRide } = useRideDispatch();
   useRiderRideNotifications(activeRide);
   const [driver, setDriver] = useState<DriverRecord | null>(null);
   const [routeCoords, setRouteCoords] = useState<GeoPoint[]>([]);
@@ -72,7 +72,13 @@ export default function LiveTripScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.title}>Пътуването е отказано</Text>
-        <Pressable style={styles.doneButton} onPress={() => navigation.replace('RiderMap')}>
+        <Pressable
+          style={styles.doneButton}
+          onPress={() => {
+            clearActiveRide();
+            navigation.replace('RiderMap');
+          }}
+        >
           <Text style={styles.doneLabel}>Към картата</Text>
         </Pressable>
       </View>
@@ -130,6 +136,7 @@ export default function LiveTripScreen({ navigation }: Props) {
             onPress={async () => {
               setSubmittingRating(true);
               await rateRide(activeRide.id, rating, reviewText);
+              await clearActiveRide();
               navigation.replace('RiderMap');
             }}
           >

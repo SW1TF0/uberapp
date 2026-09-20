@@ -9,16 +9,45 @@ import {
   PaymentMethod,
   PricingRules,
   Ride,
-  RideStatus,
   VehicleType,
 } from '../types/models';
 import { estimateFare, fareFromDistance, haversineKm, isOutsideCityLimits } from '../utils/fare';
 import { fetchDirections } from '../services/freeMaps';
 
-const TERMINAL_STATUSES: RideStatus[] = ['completed', 'cancelled'];
 const MATCH_RADIUS_KM = 5;
 const OFFER_TIMEOUT_MS = 15000;
 const RETRY_INTERVAL_MS = 3000;
+
+// Subscribes to /activeRides/{uid} (a single rideId string, or absent)
+// and mirrors whichever ride it points to live via a direct /rides/{id}
+// read. Both reads stay within what the security rules grant a normal
+// user without needing a blanket read on /rides or /activeRides itself.
+function watchActiveRideId(uid: string, setActiveRide: (ride: Ride | null) => void): () => void {
+  const pointerRef = database().ref(`/activeRides/${uid}`);
+  let detachRideListener: (() => void) | null = null;
+
+  const pointerListener = pointerRef.on('value', (pointerSnap) => {
+    detachRideListener?.();
+    detachRideListener = null;
+
+    const rideId = pointerSnap.val() as string | null;
+    if (!rideId) {
+      setActiveRide(null);
+      return;
+    }
+
+    const rideRef = database().ref(`/rides/${rideId}`);
+    const rideListener = rideRef.on('value', (rideSnap) => {
+      setActiveRide(rideSnap.exists() ? { id: rideId, ...(rideSnap.val() as Omit<Ride, 'id'>) } : null);
+    });
+    detachRideListener = () => rideRef.off('value', rideListener);
+  });
+
+  return () => {
+    pointerRef.off('value', pointerListener);
+    detachRideListener?.();
+  };
+}
 
 // Finds the nearest online, not-yet-tried driver within MATCH_RADIUS_KM of
 // the pickup point and writes a fan-out offer for them, mirroring what a
@@ -104,24 +133,16 @@ export function useRideDispatch() {
     activeRideIdRef.current = activeRide?.id ?? null;
   }, [activeRide?.id]);
 
-  // Rider: watch own rides for the most recent non-terminal one.
+  // Rider: track /activeRides/{uid} (a single rideId, written by
+  // requestRide/cancelRide/clearActiveRide below) and live-listen to that
+  // one ride directly. A broad `orderByChild('riderId').equalTo(uid)`
+  // query against /rides would need read permission at the /rides root
+  // itself, which the security rules deliberately don't grant (that would
+  // let any signed-in user list every ride in the app) — reading one ride
+  // node the caller is actually party to is what the per-ride rule allows.
   useEffect(() => {
     if (!firebaseUser || profile?.role !== 'rider') return undefined;
-
-    const ridesQuery = database().ref('/rides').orderByChild('riderId').equalTo(firebaseUser.uid);
-    const listener = ridesQuery.on('value', (snapshot) => {
-      let latestActive: Ride | null = null;
-      snapshot.forEach((child) => {
-        const ride: Ride = { id: child.key as string, ...(child.val() as Omit<Ride, 'id'>) };
-        if (!TERMINAL_STATUSES.includes(ride.status)) {
-          if (!latestActive || ride.requestedAt > latestActive.requestedAt) latestActive = ride;
-        }
-        return undefined;
-      });
-      setActiveRide(latestActive);
-    });
-
-    return () => ridesQuery.off('value', listener);
+    return watchActiveRideId(firebaseUser.uid, setActiveRide);
   }, [firebaseUser, profile?.role, setActiveRide]);
 
   // Rider: keep trying to match a 'requested' ride to a driver. Retries
@@ -160,24 +181,11 @@ export function useRideDispatch() {
     return () => offerRef.off('value', listener);
   }, [firebaseUser, profile?.role, setIncomingOffer]);
 
-  // Driver: watch own rides for the currently assigned non-terminal one.
+  // Driver: same /activeRides/{uid} indirection, written by
+  // acceptOffer/clearActiveRide below.
   useEffect(() => {
     if (!firebaseUser || profile?.role !== 'driver') return undefined;
-
-    const ridesQuery = database().ref('/rides').orderByChild('driverId').equalTo(firebaseUser.uid);
-    const listener = ridesQuery.on('value', (snapshot) => {
-      let latestActive: Ride | null = null;
-      snapshot.forEach((child) => {
-        const ride: Ride = { id: child.key as string, ...(child.val() as Omit<Ride, 'id'>) };
-        if (!TERMINAL_STATUSES.includes(ride.status)) {
-          if (!latestActive || ride.requestedAt > latestActive.requestedAt) latestActive = ride;
-        }
-        return undefined;
-      });
-      setActiveRide(latestActive);
-    });
-
-    return () => ridesQuery.off('value', listener);
+    return watchActiveRideId(firebaseUser.uid, setActiveRide);
   }, [firebaseUser, profile?.role, setActiveRide]);
 
   const requestRide = useCallback(
@@ -223,6 +231,7 @@ export function useRideDispatch() {
       };
       await rideRef.set(ride);
       const rideId = rideRef.key as string;
+      await database().ref(`/activeRides/${firebaseUser.uid}`).set(rideId);
       // Seed the store immediately instead of waiting for the live
       // listener's next snapshot — on a fresh RTDB connection that can lag
       // a couple of seconds, which left the rider looking at an empty
@@ -270,6 +279,7 @@ export function useRideDispatch() {
     });
     await database().ref(`/driverRequests/${firebaseUser.uid}`).remove();
     await database().ref(`/drivers/${firebaseUser.uid}/status`).set('busy');
+    await database().ref(`/activeRides/${firebaseUser.uid}`).set(rideId);
 
     // Same reasoning as requestRide(): seed the store from a direct read
     // right away rather than waiting on the live listener's next tick.
@@ -371,6 +381,17 @@ export function useRideDispatch() {
       .update({ rating, reviewText: reviewText?.trim() || null });
   }, []);
 
+  // Called once the user is done looking at a finished ride's screen
+  // (rated it, or acknowledged a cancellation) — drops the
+  // /activeRides/{uid} pointer so the next requestRide()/acceptOffer()
+  // starts clean and the map/dashboard stops treating the old ride as
+  // current.
+  const clearActiveRide = useCallback(async (): Promise<void> => {
+    if (!firebaseUser) return;
+    await database().ref(`/activeRides/${firebaseUser.uid}`).set(null);
+    setActiveRide(null);
+  }, [firebaseUser, setActiveRide]);
+
   return {
     activeRide,
     incomingOffer,
@@ -381,5 +402,6 @@ export function useRideDispatch() {
     updateRideStatus,
     completeRide,
     rateRide,
+    clearActiveRide,
   };
 }

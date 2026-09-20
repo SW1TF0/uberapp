@@ -16,7 +16,7 @@ type Props = NativeStackScreenProps<DriverStackParamList, 'DriverTrip'>;
 
 export default function DriverTripScreen({ navigation }: Props) {
   const { firebaseUser } = useAuth();
-  const { activeRide, updateRideStatus, completeRide } = useRideDispatch();
+  const { activeRide, updateRideStatus, completeRide, clearActiveRide } = useRideDispatch();
   const [ownLocation, setOwnLocation] = useState<GeoPoint | null>(null);
   const [route, setRoute] = useState<DirectionsResult | null>(null);
   const [completing, setCompleting] = useState(false);
@@ -72,7 +72,13 @@ export default function DriverTripScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.title}>Пътникът отказа пътуването</Text>
-        <Pressable style={styles.primaryButton} onPress={() => navigation.replace('DriverDashboard')}>
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() => {
+            clearActiveRide();
+            navigation.replace('DriverDashboard');
+          }}
+        >
           <Text style={styles.primaryLabel}>Обратно към таблото</Text>
         </Pressable>
       </View>
@@ -99,7 +105,13 @@ export default function DriverTripScreen({ navigation }: Props) {
             </View>
           </View>
         )}
-        <Pressable style={styles.primaryButton} onPress={() => navigation.replace('DriverDashboard')}>
+        <Pressable
+          style={styles.primaryButton}
+          onPress={() => {
+            clearActiveRide();
+            navigation.replace('DriverDashboard');
+          }}
+        >
           <Text style={styles.primaryLabel}>Обратно към таблото</Text>
         </Pressable>
       </View>
