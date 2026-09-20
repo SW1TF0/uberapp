@@ -7,8 +7,11 @@ module.exports = {
     userInterfaceStyle: 'automatic',
     scheme: 'kardzhaliride',
     assetBundlePatterns: ['**/*'],
+    icon: './assets/icon.png',
+    backgroundColor: '#160B0D',
     ios: {
       supportsTablet: false,
+      icon: './assets/icon.png',
       bundleIdentifier: 'com.kardzhaliride.app',
       // Locally, EAS Build reads the file straight off disk. In the cloud
       // (where the repo's gitignored config files don't exist), it's
@@ -31,6 +34,10 @@ module.exports = {
     android: {
       package: 'com.kardzhaliride.app',
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
+      adaptiveIcon: {
+        foregroundImage: './assets/adaptive-icon-foreground.png',
+        backgroundColor: '#A11D2E',
+      },
       permissions: [
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
@@ -52,6 +59,7 @@ module.exports = {
       [
         'expo-splash-screen',
         {
+          image: './assets/splash-icon.png',
           backgroundColor: '#160B0D',
           resizeMode: 'contain',
         },
@@ -62,8 +70,19 @@ module.exports = {
           photosPermission: 'Kardzhali Ride се нуждае от достъп до снимките ти, за да зададеш профилна снимка.',
         },
       ],
+      [
+        '@stripe/stripe-react-native',
+        {
+          enableGooglePay: false,
+        },
+      ],
     ],
     extra: {
+      // The Stripe PUBLISHABLE key is not secret — it's meant to ship
+      // inside client apps (see README's Stripe setup section) — so
+      // unlike the google-services files it's just a plain env var, no
+      // "file" secret upload needed.
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '',
       eas: {
         projectId: '6339be96-12b0-4f99-8315-9a42066ebd98',
       },
