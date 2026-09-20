@@ -293,11 +293,16 @@ export function useRideDispatch() {
     if (!firebaseUser || !incomingOffer) return;
     const { rideId } = incomingOffer;
     await database().ref(`/driverRequests/${firebaseUser.uid}`).remove();
-    // Clearing `matching` (rather than leaving it to expire) is what lets
-    // the rider's retry effect re-offer to the next driver immediately.
+    // Only expire the offer — do NOT remove the whole `matching` node.
+    // excludedDriverIds lives there too, and wiping the node along with
+    // it erases the rider's memory of who already declined, so the very
+    // next match attempt immediately re-offers this same driver again
+    // (they're still the nearest one). Setting expiresAt into the past
+    // clears attemptMatch's "still waiting" guard while leaving
+    // excludedDriverIds (and this driver's id in it) intact.
     await database()
       .ref(`/rides/${rideId}/matching`)
-      .remove()
+      .update({ expiresAt: 0 })
       .catch(() => undefined);
   }, [firebaseUser, incomingOffer]);
 
