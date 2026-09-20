@@ -125,7 +125,7 @@ So before your first cloud build, upload the file as a secure EAS **file**
 environment variable (run from `mobile/`, with `google-services.json`
 already sitting there from the setup steps above):
 ```
-eas env:create --scope project --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret --environment preview
+eas env:set --scope project --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret --environment preview
 ```
 (swap `--environment preview` for `development`/`production`, or repeat the command once per environment you build for). Do the same for `GoogleService-Info.plist` under the name `GOOGLE_SERVICES_INFO_PLIST` if you're also building for iOS.
 
