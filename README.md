@@ -8,7 +8,11 @@ Firebase's free Spark plan (Realtime Database + email/password Auth) and
 OpenStreetMap-based services (Nominatim search, OSRM routing, Leaflet map
 tiles — all free, no API key). There's an optional upgrade path to Google
 Maps + Cloud Functions (Firebase's paid Blaze plan) described near the
-bottom, but nothing here requires it.
+bottom, but nothing here requires it. The one exception is **real card
+payments** ("Card payments (Stripe)" below) — genuinely charging a card is
+never free anywhere (Stripe takes a standard per-transaction cut) and
+needs Blaze for the backend that talks to Stripe; it's entirely optional
+and cash rides work with zero cost either way.
 
 ## Repo layout
 
@@ -43,9 +47,10 @@ mobile/
 
 - `/users/{uid}` — `{ uid, role: 'rider'|'driver', name, phone, email, createdAt, avatarUrl?, notificationsEnabled? }`
 - `/drivers/{uid}` — `{ profile: { name, phone, rating, ratingCount, vehicle, avatarUrl? }, status: 'offline'|'online'|'busy', location: { lat, lng, heading, speed, updatedAt } }`. Keyed by the driver's own auth uid, so rules stay simple. `rating`/`ratingCount` are self-written by the driver's own app (see "Reviews & ratings" below) — riders never write to another user's driver node.
-- `/rides/{rideId}` — full ride lifecycle document (`pickup`, `dropoff`, `status`, fare fields, timestamps, `rating`, `reviewText`). `status` moves `requested → accepted → arrived → in_progress → completed` (or `cancelled` at any point before `completed`). On completion also carries `platformFeeBGN`/`driverEarningsBGN` (see "Platform commission" below).
+- `/rides/{rideId}` — full ride lifecycle document (`pickup`, `dropoff`, `status`, fare fields, timestamps, `rating`, `reviewText`). `status` moves `requested → accepted → arrived → in_progress → completed` (or `cancelled` at any point before `completed`). On completion also carries `platformFeeBGN`/`driverEarningsBGN` (see "Platform commission" below). For card rides, also `paymentStatus`/`stripePaymentIntentId` — see "Card payments" below; these two fields can only ever be written by the Stripe Cloud Functions (Admin SDK), never by a client.
 - `/rides/{rideId}/matching` — matching bookkeeping (`offeredDriverId`, `offeredAt`, `expiresAt`, `excludedDriverIds`), written by the rider's own client (see below).
 - `/driverRequests/{driverId}/{rideId}` — fan-out ride offer a driver currently has open. Written by the rider's client when it matches them, resolved (accepted/declined) by the driver client.
+- `/activeRides/{uid}` — a single rideId (or absent), pointing each rider/driver at whichever ride they're currently in. Read/write only by that same uid. The rider/driver apps listen here rather than running a broad query across `/rides` (which the security rules can't scope to "my own rides" for a query spanning many other users' documents) — once the pointer resolves to an id, the app reads that one ride directly, which the per-ride rule below does allow.
 - `/pricing_rules` — single BGN pricing config: base fare, per-km/per-min rates, minimum fare, Kardzhali city-limits geofence (center + radius), outer-zone surcharge multiplier, per-vehicle-type multipliers, `platformCommissionRate` (0.10 = 10%). Read-only to clients; see `firebase/schema/sample-database.json` for real Kardzhali-centered values.
 - `/transactions/{rideId}` — the logged, final record of a completed ride (`riderId`, `driverId`, `distanceKm`, `durationMin`, `fareBGN`, `platformFeeBGN`, `driverEarningsBGN`, `paymentMethod`, `completedAt`), written by the completing driver's client.
 - `/riderHistory/{riderId}/{rideId}` and `/driverHistory/{driverId}/{rideId}` — `true`-valued fan-out indexes so a user's completed-ride history can be listed without scanning all of `/rides`. Each user can only read/write their own.
@@ -88,6 +93,56 @@ server-authoritative version of the same logic.
 - **Reviews.** Riders can leave a star rating *and* a written review after a completed ride (stored on the ride itself, which they already have write access to). A driver's aggregate rating isn't a running counter riders write to — the security rules don't allow that — instead each driver's own app computes it from their own completed rides (`mobile/src/utils/reviews.ts`) and self-writes the average to `/drivers/{uid}/profile/rating`. The same computation powers the reviews list on the Earnings & Reviews screen.
 - **Avatar photos.** Either role can pick a profile photo (Profile screen, tap the camera badge on the avatar) via `expo-image-picker`, resized/compressed with `expo-image-manipulator`, and stored as a base64 data URI on `/users/{uid}/avatarUrl` (and `/drivers/{uid}/profile/avatarUrl` for drivers, since that's the record riders actually read) — no file storage service involved at all. Shown on the driver card during a live trip and on the rider's post-trip rating screen.
 - **Settings + in-app notifications.** A Settings screen (gear icon on Profile) toggles notifications, stored on the user's profile. When enabled, `useRideNotifications.ts` fires a local notification (`expo-notifications`) on key status changes — driver matched, arrived, trip started/completed for the rider; a new ride request for the driver. **This only works while the app is open or backgrounded but still running** — there's no server to wake it up from fully closed, which real push notifications need (see "Optional upgrade" below).
+
+## Card payments (Stripe)
+
+Unlike everything else in this app, real card charging genuinely can't be
+done for free or purely client-side — card details have to go through a
+PCI-compliant processor (Stripe here), which requires a small backend to
+create the charge, and Stripe itself takes a standard per-transaction cut
+(~2.9% + a small fixed fee; there's no free processor anywhere). This is
+the one part of the app that costs money to run, and it's the one part
+that needs the Firebase **Blaze** plan (a card on file with Google, since
+Cloud Functions can only make outbound network calls — to Stripe's API —
+on Blaze, not the free Spark plan). Cash rides need none of this and stay
+completely free.
+
+**How it works:** when a driver completes a `paymentMethod: 'card'` ride,
+the rider's app calls the `createPaymentIntent` Cloud Function
+(`firebase/functions/src/payments.ts`), which creates a Stripe
+PaymentIntent for the final fare and returns its `client_secret`. The app
+hands that to Stripe's own Payment Sheet (`@stripe/stripe-react-native`) to
+collect the card — the card number never reaches this app or Firebase.
+Once Stripe actually confirms the charge, it calls the `stripeWebhook`
+function directly, which is the *only* thing allowed to write
+`paymentStatus: 'paid'` on the ride (enforced in `database.rules.json` —
+a client write can only leave that field exactly as it already is), so a
+rider can't just claim they paid. The rating screen is hidden behind
+payment for card rides until that confirmation lands, usually within a
+couple of seconds.
+
+Setup:
+1. Create a free account at [stripe.com](https://dashboard.stripe.com/register). Stay in **test mode** at first (test card `4242 4242 4242 4242`, any future expiry/CVC) — no real charges happen in test mode.
+2. Stripe Dashboard → Developers → API keys. Copy the **Publishable key** (`pk_test_...`) and **Secret key** (`sk_test_...`).
+3. Upgrade the Firebase project to **Blaze** (console.firebase.google.com → your project → Upgrade, bottom left). Needed only for this feature — everything else in the app stays on Spark either way.
+4. From `firebase/`:
+   ```
+   firebase functions:secrets:set STRIPE_SECRET_KEY
+   ```
+   paste the `sk_test_...` key when prompted.
+5. `cd functions && npm install`, then deploy **just the two payment functions** (not the whole `functions/` codebase — the other ones there are the separate, still-optional matching/fare upgrade, and deploying them too would activate a second, server-side matching engine alongside the client-side one):
+   ```
+   firebase deploy --only functions:createPaymentIntent,functions:stripeWebhook
+   ```
+   The deploy output prints the `stripeWebhook` function's URL (`https://<region>-<project>.cloudfunctions.net/stripeWebhook`).
+6. Stripe Dashboard → Developers → Webhooks → Add endpoint. Paste that URL, and select the `payment_intent.succeeded` and `payment_intent.payment_failed` events. Stripe then shows a **Signing secret** (`whsec_...`) — set it too:
+   ```
+   firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
+   ```
+   then redeploy the same two functions so they pick it up.
+7. Add the publishable key to `mobile/` — it's not secret, so it's a plain env var, not a file upload like the google-services files. Either export it before building (`set STRIPE_PUBLISHABLE_KEY=pk_test_...` on Windows, `export` on Mac/Linux) or, for EAS cloud builds, `eas env:set --scope project --name STRIPE_PUBLISHABLE_KEY --type string --value pk_test_... --visibility plaintext --environment preview`.
+8. Rebuild (`eas build --platform android --profile preview`) and test a card ride end to end with the `4242...` test card.
+9. When ready for real money: flip Stripe out of test mode, generate **live** keys (`pk_live_...`/`sk_live_...`), repeat steps 4–7 with those, and add a live webhook endpoint (test and live mode each need their own).
 
 ## Security rules
 
@@ -185,4 +240,4 @@ Accepting an offer sets `/drivers/{uid}/status` to `busy` (so the driver stops r
 
 ## Status
 
-Firebase schema/rules, sync hooks (auth, live driver location, ride dispatch, notifications), Rider UI (map, destination picker, ride confirm, live trip, ride history), Driver UI (dashboard, trip screen, earnings & reviews), avatar photos, dual BGN/EUR currency, 10% platform commission bookkeeping, and written reviews are all built and running client-side on the free stack described above, in a dark-red theme, with the UI in Bulgarian throughout. The equivalent Cloud Functions exist as an optional, unused-by-default upgrade path. What this repo does *not* include, since it isn't achievable for free/client-only: real push notifications while the app is fully closed (needs a server — see "Optional upgrade"), and real card payment processing (needs a payment processor like Stripe with server-side charge logic — the "Card" option is recorded but nothing actually charges a card). No admin dashboard either, since none was asked for.
+Firebase schema/rules, sync hooks (auth, live driver location, ride dispatch, notifications), Rider UI (map, destination picker, ride confirm, live trip, ride history), Driver UI (dashboard, trip screen, earnings & reviews), avatar photos, dual BGN/EUR currency, 10% platform commission bookkeeping, and written reviews are all built and running client-side on the free stack described above, in a dark-red theme, with the UI in Bulgarian throughout. Real card charging via Stripe is built too (`createPaymentIntent`/`stripeWebhook` Cloud Functions + the Payment Sheet in the app) — see "Card payments (Stripe)" above — but is opt-in since it's the one piece that needs Firebase's paid Blaze plan and a Stripe account; cash rides need none of it. The matching/fare-finalization Cloud Functions are a separate, still-optional upgrade path. What this repo does *not* include, since it isn't achievable for free/client-only: real push notifications while the app is fully closed (needs a server — see "Optional upgrade"). No admin dashboard either, since none was asked for.

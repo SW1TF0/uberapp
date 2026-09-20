@@ -1,6 +1,7 @@
 export type Role = 'rider' | 'driver';
 export type VehicleType = 'economy' | 'comfort' | 'xl';
 export type PaymentMethod = 'cash' | 'card';
+export type PaymentStatus = 'pending' | 'paid' | 'failed';
 export type RideStatus =
   | 'requested'
   | 'accepted'
@@ -81,6 +82,12 @@ export type Ride = {
   rating: number | null;
   reviewText: string | null;
   matching?: RideMatchingState;
+  // Only meaningful when paymentMethod === 'card'. Set to 'pending' by
+  // completeRide(), then flipped to 'paid'/'failed' server-side by the
+  // stripeWebhook Cloud Function once Stripe confirms the charge — never
+  // written directly by a client, so a rider can't just claim they paid.
+  paymentStatus?: PaymentStatus | null;
+  stripePaymentIntentId?: string | null;
 };
 
 export type DriverRideOffer = {

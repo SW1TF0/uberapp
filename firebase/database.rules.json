@@ -109,6 +109,9 @@
         "fareEstimateBGN": { ".validate": "newData.isNumber() && newData.val() >= 0" },
         "finalFareBGN": { ".validate": "newData.val() === null || (newData.isNumber() && newData.val() >= 0)" },
 
+        "paymentStatus": { ".validate": "newData.val() === data.val()" },
+        "stripePaymentIntentId": { ".validate": "newData.val() === data.val()" },
+
         "matching": {
           ".write": "auth != null && (root.child('rides').child($rideId).child('riderId').val() === auth.uid || data.child('offeredDriverId').val() === auth.uid)"
         }

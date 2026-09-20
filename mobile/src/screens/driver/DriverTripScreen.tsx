@@ -91,7 +91,11 @@ export default function DriverTripScreen({ navigation }: Props) {
         <Text style={styles.title}>Пътуването приключи 🎉</Text>
         <Text style={styles.fare}>{formatDualCurrency(activeRide.finalFareBGN ?? activeRide.fareEstimateBGN)}</Text>
         <Text style={styles.paymentNote}>
-          {activeRide.paymentMethod === 'cash' ? 'Плащане в брой — събрано от пътника' : 'Платено с карта'}
+          {activeRide.paymentMethod === 'cash'
+            ? 'Плащане в брой — събрано от пътника'
+            : activeRide.paymentStatus === 'paid'
+            ? 'Платено с карта'
+            : 'Чакаме пътникът да плати с карта'}
         </Text>
         {activeRide.driverEarningsBGN != null && (
           <View style={styles.earningsCard}>

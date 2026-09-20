@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import database from '@react-native-firebase/database';
 import { Star } from 'lucide-react-native';
+import { useStripe } from '@stripe/stripe-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
@@ -21,6 +22,7 @@ import { DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { useRiderRideNotifications } from '../../hooks/useRideNotifications';
 import { fetchDirections } from '../../services/freeMaps';
+import { createCardPaymentIntent } from '../../services/payments';
 import { formatDualCurrency } from '../../utils/currency';
 import { DriverRecord, GeoPoint } from '../../types/models';
 import { LeafletMap } from '../../components/LeafletMap';
@@ -36,6 +38,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function LiveTripScreen({ navigation }: Props) {
   const { activeRide, cancelRide, rateRide, clearActiveRide } = useRideDispatch();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   useRiderRideNotifications(activeRide);
   const [driver, setDriver] = useState<DriverRecord | null>(null);
   const [routeCoords, setRouteCoords] = useState<GeoPoint[]>([]);
@@ -43,6 +46,8 @@ export default function LiveTripScreen({ navigation }: Props) {
   const [reviewText, setReviewText] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [payingCard, setPayingCard] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   async function handleCancel() {
     setCancelling(true);
@@ -52,6 +57,36 @@ export default function LiveTripScreen({ navigation }: Props) {
       Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешен отказ на пътуването.');
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleCardPayment(rideId: string) {
+    setPayingCard(true);
+    try {
+      const clientSecret = await createCardPaymentIntent(rideId);
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: 'Kardzhali Ride',
+      });
+      if (initError) throw new Error(initError.message);
+
+      const { error: presentError } = await presentPaymentSheet();
+      if (presentError) {
+        if (presentError.code !== 'Canceled') {
+          Alert.alert('Грешка', presentError.message);
+        }
+        return;
+      }
+      // Stripe confirmed the charge on its end just now, but our own
+      // record of it (paymentStatus) only updates once the stripeWebhook
+      // Cloud Function processes the event — usually a second or two.
+      // The live ride listener will flip this screen out of the payment
+      // view automatically once that lands.
+      setAwaitingConfirmation(true);
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно плащане.');
+    } finally {
+      setPayingCard(false);
     }
   }
 
@@ -99,6 +134,8 @@ export default function LiveTripScreen({ navigation }: Props) {
   }
 
   if (activeRide.status === 'completed') {
+    const needsCardPayment = activeRide.paymentMethod === 'card' && activeRide.paymentStatus !== 'paid';
+
     return (
       <KeyboardAvoidingView
         style={styles.flex}
@@ -121,44 +158,72 @@ export default function LiveTripScreen({ navigation }: Props) {
             </View>
           )}
 
-          <Text style={styles.sectionTitle}>Как беше пътуването?</Text>
-          <View style={styles.stars}>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Pressable key={n} onPress={() => setRating(n)}>
-                <Star
-                  size={32}
-                  color={n <= rating ? colors.warning : colors.border}
-                  fill={n <= rating ? colors.warning : 'transparent'}
-                />
+          {needsCardPayment ? (
+            <>
+              <Text style={styles.sectionTitle}>Плащане с карта</Text>
+              {awaitingConfirmation ? (
+                <View style={styles.pendingRow}>
+                  <ActivityIndicator color={colors.primary} />
+                  <Text style={styles.hint}>Потвърждаваме плащането...</Text>
+                </View>
+              ) : (
+                <Pressable
+                  style={styles.doneButton}
+                  disabled={payingCard}
+                  onPress={() => handleCardPayment(activeRide.id)}
+                >
+                  {payingCard ? (
+                    <ActivityIndicator color={colors.onPrimary} />
+                  ) : (
+                    <Text style={styles.doneLabel}>
+                      Плати {formatDualCurrency(activeRide.finalFareBGN ?? activeRide.fareEstimateBGN)}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+            </>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>Как беше пътуването?</Text>
+              <View style={styles.stars}>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Pressable key={n} onPress={() => setRating(n)}>
+                    <Star
+                      size={32}
+                      color={n <= rating ? colors.warning : colors.border}
+                      fill={n <= rating ? colors.warning : 'transparent'}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+
+              <TextInput
+                style={styles.reviewInput}
+                placeholder="Остави отзив (по желание)"
+                placeholderTextColor={colors.textMuted}
+                value={reviewText}
+                onChangeText={setReviewText}
+                multiline
+              />
+
+              <Pressable
+                style={styles.doneButton}
+                disabled={submittingRating}
+                onPress={async () => {
+                  setSubmittingRating(true);
+                  await rateRide(activeRide.id, rating, reviewText);
+                  await clearActiveRide();
+                  navigation.replace('RiderMap');
+                }}
+              >
+                {submittingRating ? (
+                  <ActivityIndicator color={colors.onPrimary} />
+                ) : (
+                  <Text style={styles.doneLabel}>Готово</Text>
+                )}
               </Pressable>
-            ))}
-          </View>
-
-          <TextInput
-            style={styles.reviewInput}
-            placeholder="Остави отзив (по желание)"
-            placeholderTextColor={colors.textMuted}
-            value={reviewText}
-            onChangeText={setReviewText}
-            multiline
-          />
-
-          <Pressable
-            style={styles.doneButton}
-            disabled={submittingRating}
-            onPress={async () => {
-              setSubmittingRating(true);
-              await rateRide(activeRide.id, rating, reviewText);
-              await clearActiveRide();
-              navigation.replace('RiderMap');
-            }}
-          >
-            {submittingRating ? (
-              <ActivityIndicator color={colors.onPrimary} />
-            ) : (
-              <Text style={styles.doneLabel}>Готово</Text>
-            )}
-          </Pressable>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -225,6 +290,8 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 24, fontWeight: '800' },
   fare: { color: colors.primary, fontSize: 22, fontWeight: '700', marginTop: 10 },
   sectionTitle: { color: colors.textMuted, marginTop: 24, marginBottom: 12 },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  hint: { color: colors.textMuted, fontSize: 13 },
   stars: { flexDirection: 'row', gap: 8 },
   reviewInput: {
     backgroundColor: colors.card,
