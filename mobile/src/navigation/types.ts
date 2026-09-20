@@ -13,10 +13,13 @@ export type RiderStackParamList = {
   LiveTrip: undefined;
   RideHistory: undefined;
   Profile: undefined;
+  Settings: undefined;
 };
 
 export type DriverStackParamList = {
   DriverDashboard: undefined;
   DriverTrip: undefined;
+  DriverEarnings: undefined;
   Profile: undefined;
+  Settings: undefined;
 };

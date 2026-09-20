@@ -82,7 +82,7 @@ export default function EmailAuthScreen({ route, navigation }: Props) {
 
       <Pressable style={styles.button} onPress={submit} disabled={loading}>
         {loading ? (
-          <ActivityIndicator color={colors.background} />
+          <ActivityIndicator color={colors.onPrimary} />
         ) : (
           <Text style={styles.buttonLabel}>{mode === 'signup' ? 'Създай профил' : 'Влез'}</Text>
         )}
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
   tabLabel: { color: colors.textMuted, fontWeight: '600' },
-  tabLabelActive: { color: colors.background },
+  tabLabelActive: { color: colors.onPrimary },
   label: { color: colors.textMuted, marginBottom: 8, marginTop: 8 },
   input: {
     backgroundColor: colors.card,
@@ -110,5 +110,5 @@ const styles = StyleSheet.create({
   },
   error: { color: colors.danger, marginTop: 12 },
   button: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
-  buttonLabel: { color: colors.background, fontWeight: '700', fontSize: 16 },
+  buttonLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
 });

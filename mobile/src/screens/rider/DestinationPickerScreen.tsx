@@ -175,5 +175,5 @@ const styles = StyleSheet.create({
   },
   routeInfo: { color: colors.textMuted, textAlign: 'center', marginBottom: 10 },
   confirmButton: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  confirmLabel: { color: colors.background, fontWeight: '700', fontSize: 16 },
+  confirmLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
 });

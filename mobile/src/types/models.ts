@@ -17,6 +17,8 @@ export type UserProfile = {
   phone: string;
   email: string;
   createdAt: number;
+  avatarUrl?: string;
+  notificationsEnabled?: boolean;
 };
 
 export type DriverVehicle = {
@@ -40,7 +42,9 @@ export type DriverRecord = {
     name: string;
     phone: string;
     rating: number;
+    ratingCount: number;
     vehicle: DriverVehicle;
+    avatarUrl?: string;
   };
   status: DriverStatus;
   location: DriverLocation | null;
@@ -66,6 +70,8 @@ export type Ride = {
   isOuterZone: boolean;
   fareEstimateBGN: number;
   finalFareBGN: number | null;
+  platformFeeBGN: number | null;
+  driverEarningsBGN: number | null;
   requestedAt: number;
   acceptedAt: number | null;
   arrivedAt: number | null;
@@ -73,6 +79,7 @@ export type Ride = {
   completedAt: number | null;
   cancelledAt: number | null;
   rating: number | null;
+  reviewText: string | null;
   matching?: RideMatchingState;
 };
 
@@ -107,4 +114,22 @@ export type PricingRules = {
   };
   outerSurchargeMultiplier: number;
   vehicleTypeMultipliers: Record<VehicleType, number>;
+  // Share of the fare the platform keeps; the rest (1 - rate) is the
+  // driver's net earnings for that ride. 0.10 = 10%.
+  platformCommissionRate: number;
+};
+
+export type Transaction = {
+  rideId: string;
+  riderId: string;
+  driverId: string;
+  vehicleType: VehicleType;
+  paymentMethod: PaymentMethod;
+  distanceKm: number;
+  durationMin: number;
+  fareBGN: number;
+  platformFeeBGN: number;
+  driverEarningsBGN: number;
+  currency: 'BGN';
+  completedAt: number;
 };

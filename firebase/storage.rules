@@ -1,0 +1,16 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // One avatar image per user, keyed by their own uid so rules stay
+    // simple. Any signed-in user can read any avatar (riders/drivers need
+    // to see each other's), but only the owner can upload their own,
+    // capped at 5MB and restricted to actual image content.
+    match /avatars/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

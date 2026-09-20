@@ -7,6 +7,7 @@ import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { estimateFare } from '../../utils/fare';
+import { formatDualCurrency } from '../../utils/currency';
 import { PaymentMethod, PricingRules, VehicleType } from '../../types/models';
 
 type Props = NativeStackScreenProps<RiderStackParamList, 'RideConfirm'>;
@@ -84,7 +85,7 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
                 {e.distanceKm} км · {e.durationMin} мин
               </Text>
             </View>
-            <Text style={styles.vehiclePrice}>{e.fareBGN.toFixed(2)} лв</Text>
+            <Text style={styles.vehiclePrice}>{formatDualCurrency(e.fareBGN)}</Text>
           </Pressable>
         ))}
       </View>
@@ -95,7 +96,7 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
           style={[styles.paymentOption, paymentMethod === 'cash' && styles.paymentOptionSelected]}
           onPress={() => setPaymentMethod('cash')}
         >
-          <Banknote size={20} color={paymentMethod === 'cash' ? colors.background : colors.text} />
+          <Banknote size={20} color={paymentMethod === 'cash' ? colors.onPrimary : colors.text} />
           <Text style={[styles.paymentLabel, paymentMethod === 'cash' && styles.paymentLabelSelected]}>
             В брой
           </Text>
@@ -104,7 +105,7 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
           style={[styles.paymentOption, paymentMethod === 'card' && styles.paymentOptionSelected]}
           onPress={() => setPaymentMethod('card')}
         >
-          <CreditCard size={20} color={paymentMethod === 'card' ? colors.background : colors.text} />
+          <CreditCard size={20} color={paymentMethod === 'card' ? colors.onPrimary : colors.text} />
           <Text style={[styles.paymentLabel, paymentMethod === 'card' && styles.paymentLabelSelected]}>
             Карта
           </Text>
@@ -115,9 +116,9 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
 
       <Pressable style={styles.confirmButton} onPress={confirm} disabled={submitting}>
         {submitting ? (
-          <ActivityIndicator color={colors.background} />
+          <ActivityIndicator color={colors.onPrimary} />
         ) : (
-          <Text style={styles.confirmLabel}>Поръчай {selected.fareBGN.toFixed(2)} лв</Text>
+          <Text style={styles.confirmLabel}>Поръчай · {formatDualCurrency(selected.fareBGN)}</Text>
         )}
       </Pressable>
     </View>
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   },
   paymentOptionSelected: { backgroundColor: colors.primary },
   paymentLabel: { color: colors.text, fontWeight: '600' },
-  paymentLabelSelected: { color: colors.background },
+  paymentLabelSelected: { color: colors.onPrimary },
   error: { color: colors.danger, marginTop: 16, textAlign: 'center' },
   confirmButton: {
     backgroundColor: colors.primary,
@@ -168,5 +169,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 'auto',
   },
-  confirmLabel: { color: colors.background, fontWeight: '700', fontSize: 16 },
+  confirmLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
 });

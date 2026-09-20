@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { colors } from '../theme/colors';
+import { formatDualCurrency } from '../utils/currency';
 import { DriverRideOffer } from '../types/models';
 
 const OFFER_TIMEOUT_SECONDS = 15;
@@ -49,7 +50,7 @@ export function IncomingRequestOverlay({ offer, onAccept, onDecline }: Props) {
           </View>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Очаквана печалба</Text>
-            <Text style={styles.rowValuePrimary}>{offer.fareEstimateBGN.toFixed(2)} лв</Text>
+            <Text style={styles.rowValuePrimary}>{formatDualCurrency(offer.fareEstimateBGN)}</Text>
           </View>
 
           <View style={styles.actions}>
@@ -82,5 +83,5 @@ const styles = StyleSheet.create({
   declineButton: { backgroundColor: colors.card },
   declineLabel: { color: colors.text, fontWeight: '700' },
   acceptButton: { backgroundColor: colors.primary },
-  acceptLabel: { color: colors.background, fontWeight: '700' },
+  acceptLabel: { color: colors.onPrimary, fontWeight: '700' },
 });

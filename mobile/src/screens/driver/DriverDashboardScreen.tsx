@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Switch, StyleSheet, Pressable } from 'react-native';
 import database from '@react-native-firebase/database';
-import { User } from 'lucide-react-native';
+import { User, Wallet } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DriverStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
@@ -9,8 +9,10 @@ import { DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useAuth } from '../../hooks/useAuth';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
+import { useDriverOfferNotifications } from '../../hooks/useRideNotifications';
 import { IncomingRequestOverlay } from '../../components/IncomingRequestOverlay';
 import { LeafletMap } from '../../components/LeafletMap';
+import { computeDriverRatingStats } from '../../utils/reviews';
 import { GeoPoint } from '../../types/models';
 
 type Props = NativeStackScreenProps<DriverStackParamList, 'DriverDashboard'>;
@@ -18,6 +20,7 @@ type Props = NativeStackScreenProps<DriverStackParamList, 'DriverDashboard'>;
 export default function DriverDashboardScreen({ navigation }: Props) {
   const { profile, firebaseUser } = useAuth();
   const { activeRide, incomingOffer, acceptOffer, declineOffer } = useRideDispatch();
+  useDriverOfferNotifications(incomingOffer);
   const [online, setOnline] = useState(false);
   const [ownLocation, setOwnLocation] = useState<GeoPoint | null>(null);
   useDriverLocation(online);
@@ -40,6 +43,24 @@ export default function DriverDashboardScreen({ navigation }: Props) {
   useEffect(() => {
     if (hasActiveRide) navigation.navigate('DriverTrip');
   }, [hasActiveRide, navigation]);
+
+  // Keep the publicly-shown rating/ratingCount fresh from this driver's
+  // own ride history — riders can't write to another user's /drivers
+  // node (the security rules only allow self-writes there), so the
+  // aggregate has to be computed and self-written by the driver's own
+  // client rather than by whoever leaves the rating.
+  useEffect(() => {
+    if (!firebaseUser) return;
+    computeDriverRatingStats(firebaseUser.uid)
+      .then((stats) => {
+        if (stats.count === 0) return;
+        return database().ref(`/drivers/${firebaseUser.uid}/profile`).update({
+          rating: stats.average,
+          ratingCount: stats.count,
+        });
+      })
+      .catch(() => undefined);
+  }, [firebaseUser]);
 
   async function toggleOnline(value: boolean) {
     if (!firebaseUser) return;
@@ -74,9 +95,14 @@ export default function DriverDashboardScreen({ navigation }: Props) {
           <Text style={styles.statusText}>{online ? 'Онлайн' : 'Офлайн'}</Text>
           <Switch value={online} onValueChange={toggleOnline} disabled={hasActiveRide} trackColor={{ true: colors.primary }} />
         </View>
-        <Pressable style={styles.iconButton} onPress={() => navigation.navigate('Profile')}>
-          <User size={20} color={colors.text} />
-        </Pressable>
+        <View style={styles.topBarIcons}>
+          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('DriverEarnings')}>
+            <Wallet size={20} color={colors.text} />
+          </Pressable>
+          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('Profile')}>
+            <User size={20} color={colors.text} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.footer}>
@@ -115,6 +141,7 @@ const styles = StyleSheet.create({
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
   statusText: { color: colors.text, fontWeight: '600' },
+  topBarIcons: { flexDirection: 'row', gap: 10 },
   iconButton: { backgroundColor: colors.surface, padding: 10, borderRadius: 12 },
   footer: {
     position: 'absolute',

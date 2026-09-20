@@ -24,6 +24,8 @@ module.exports = {
         NSLocationAlwaysAndWhenInUseUsageDescription:
           'Kardzhali Ride споделя местоположението ти с пътниците, докато си онлайн като шофьор.',
         UIBackgroundModes: ['location'],
+        NSPhotoLibraryUsageDescription:
+          'Kardzhali Ride се нуждае от достъп до снимките ти, за да зададеш профилна снимка.',
       },
     },
     android: {
@@ -49,8 +51,14 @@ module.exports = {
       [
         'expo-splash-screen',
         {
-          backgroundColor: '#0B1F3A',
+          backgroundColor: '#160B0D',
           resizeMode: 'contain',
+        },
+      ],
+      [
+        'expo-image-picker',
+        {
+          photosPermission: 'Kardzhali Ride се нуждае от достъп до снимките ти, за да зададеш профилна снимка.',
         },
       ],
     ],

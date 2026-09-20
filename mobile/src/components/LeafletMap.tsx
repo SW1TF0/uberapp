@@ -36,9 +36,9 @@ const HTML = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    html, body, #map { height: 100%; margin: 0; padding: 0; background: #0B1F3A; }
+    html, body, #map { height: 100%; margin: 0; padding: 0; background: #160B0D; }
     .driver-pin {
-      width: 26px; height: 26px; border-radius: 13px; background: #2FD675;
+      width: 26px; height: 26px; border-radius: 13px; background: #A11D2E;
       border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
     }
     .pin-dot {
@@ -86,7 +86,7 @@ const HTML = `<!DOCTYPE html>
         if (pinMarkers[m.id]) {
           pinMarkers[m.id].setLatLng([m.lat, m.lng]);
         } else {
-          pinMarkers[m.id] = L.marker([m.lat, m.lng], { icon: pinIcon(m.color || '#2FD675') }).addTo(map);
+          pinMarkers[m.id] = L.marker([m.lat, m.lng], { icon: pinIcon(m.color || '#A11D2E') }).addTo(map);
         }
       });
       Object.keys(pinMarkers).forEach(function (id) {
@@ -127,7 +127,7 @@ const HTML = `<!DOCTYPE html>
       if (polylineLayer) { map.removeLayer(polylineLayer); polylineLayer = null; }
       if (!points || points.length < 2) return;
       polylineLayer = L.polyline(points.map(function (p) { return [p.lat, p.lng]; }), {
-        color: dashed ? '#9FB0C9' : '#2FD675',
+        color: dashed ? '#B08A8F' : '#A11D2E',
         weight: dashed ? 2 : 4,
         dashArray: dashed ? '6 6' : null,
       }).addTo(map);

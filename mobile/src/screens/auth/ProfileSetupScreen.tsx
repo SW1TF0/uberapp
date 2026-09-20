@@ -141,7 +141,7 @@ export default function ProfileSetupScreen({ route }: Props) {
       {!!error && <Text style={styles.error}>{error}</Text>}
 
       <Pressable style={styles.button} onPress={submit} disabled={loading}>
-        {loading ? <ActivityIndicator color={colors.background} /> : <Text style={styles.buttonLabel}>Продължи</Text>}
+        {loading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonLabel}>Продължи</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -165,8 +165,8 @@ const styles = StyleSheet.create({
   typeOption: { flex: 1, backgroundColor: colors.card, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   typeOptionSelected: { backgroundColor: colors.primary },
   typeLabel: { color: colors.text, fontWeight: '600' },
-  typeLabelSelected: { color: colors.background },
+  typeLabelSelected: { color: colors.onPrimary },
   error: { color: colors.danger, marginTop: 16 },
   button: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 30 },
-  buttonLabel: { color: colors.background, fontWeight: '700', fontSize: 16 },
+  buttonLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
 });

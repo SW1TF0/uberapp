@@ -4,6 +4,7 @@ import database from '@react-native-firebase/database';
 import { Star } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../hooks/useAuth';
+import { formatDualCurrency } from '../../utils/currency';
 import { Ride, VehicleType } from '../../types/models';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -86,7 +87,7 @@ export default function RideHistoryScreen() {
               <Text style={styles.route} numberOfLines={1}>
                 {item.pickup.address || 'Начало'} → {item.dropoff.address || 'Дестинация'}
               </Text>
-              <Text style={styles.price}>{(item.finalFareBGN ?? item.fareEstimateBGN).toFixed(2)} лв</Text>
+              <Text style={styles.price}>{formatDualCurrency(item.finalFareBGN ?? item.fareEstimateBGN)}</Text>
             </View>
             <View style={styles.cardBottom}>
               <Text style={styles.meta}>

@@ -19,8 +19,10 @@ import RideHistoryScreen from '../screens/rider/RideHistoryScreen';
 
 import DriverDashboardScreen from '../screens/driver/DriverDashboardScreen';
 import DriverTripScreen from '../screens/driver/DriverTripScreen';
+import DriverEarningsScreen from '../screens/driver/DriverEarningsScreen';
 
 import ProfileScreen from '../screens/shared/ProfileScreen';
+import SettingsScreen from '../screens/shared/SettingsScreen';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const RiderStack = createNativeStackNavigator<RiderStackParamList>();
@@ -60,6 +62,7 @@ function RiderNavigator() {
       />
       <RiderStack.Screen name="RideHistory" component={RideHistoryScreen} options={{ title: '' }} />
       <RiderStack.Screen name="Profile" component={ProfileScreen} options={{ title: '' }} />
+      <RiderStack.Screen name="Settings" component={SettingsScreen} options={{ title: '' }} />
     </RiderStack.Navigator>
   );
 }
@@ -73,7 +76,9 @@ function DriverNavigator() {
         component={DriverTripScreen}
         options={{ headerShown: false, gestureEnabled: false }}
       />
+      <DriverStack.Screen name="DriverEarnings" component={DriverEarningsScreen} options={{ title: '' }} />
       <DriverStack.Screen name="Profile" component={ProfileScreen} options={{ title: '' }} />
+      <DriverStack.Screen name="Settings" component={SettingsScreen} options={{ title: '' }} />
     </DriverStack.Navigator>
   );
 }

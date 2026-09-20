@@ -24,6 +24,7 @@
         "name": "Стефан Колев",
         "phone": "+359881234568",
         "rating": 4.87,
+        "ratingCount": 12,
         "vehicle": {
           "make": "Toyota",
           "model": "Corolla",
@@ -69,6 +70,8 @@
       "isOuterZone": false,
       "fareEstimateBGN": 6.4,
       "finalFareBGN": null,
+      "platformFeeBGN": null,
+      "driverEarningsBGN": null,
       "requestedAt": 1758000009000,
       "acceptedAt": null,
       "arrivedAt": null,
@@ -76,6 +79,7 @@
       "completedAt": null,
       "cancelledAt": null,
       "rating": null,
+      "reviewText": null,
       "_comment": "matching.* is internal bookkeeping written by the matchRideRequest Cloud Function (Phase 5) while status is 'requested' — see matchDriver.ts",
       "matching": {
         "offeredDriverId": "driverUid001",
@@ -97,13 +101,16 @@
       "isOuterZone": false,
       "fareEstimateBGN": 6.1,
       "finalFareBGN": 6.2,
+      "platformFeeBGN": 0.62,
+      "driverEarningsBGN": 5.58,
       "requestedAt": 1757999000000,
       "acceptedAt": 1757999010000,
       "arrivedAt": 1757999090000,
       "startedAt": 1757999120000,
       "completedAt": 1757999420000,
       "cancelledAt": null,
-      "rating": 5
+      "rating": 5,
+      "reviewText": "Много любезен шофьор, чиста кола."
     }
   },
 
@@ -117,6 +124,8 @@
       "distanceKm": 1.9,
       "durationMin": 5,
       "fareBGN": 6.2,
+      "platformFeeBGN": 0.62,
+      "driverEarningsBGN": 5.58,
       "currency": "BGN",
       "completedAt": 1757999420000
     }
@@ -150,6 +159,7 @@
       "economy": 1.0,
       "comfort": 1.3,
       "xl": 1.6
-    }
+    },
+    "platformCommissionRate": 0.10
   }
 }

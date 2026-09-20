@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { DirectionsResult, fetchDirections } from '../../services/freeMaps';
 import { LeafletMap } from '../../components/LeafletMap';
+import { formatDualCurrency } from '../../utils/currency';
 import { GeoPoint } from '../../types/models';
 
 type Props = NativeStackScreenProps<DriverStackParamList, 'DriverTrip'>;
@@ -82,10 +83,22 @@ export default function DriverTripScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <Text style={styles.title}>Пътуването приключи 🎉</Text>
-        <Text style={styles.fare}>{(activeRide.finalFareBGN ?? activeRide.fareEstimateBGN).toFixed(2)} лв</Text>
+        <Text style={styles.fare}>{formatDualCurrency(activeRide.finalFareBGN ?? activeRide.fareEstimateBGN)}</Text>
         <Text style={styles.paymentNote}>
           {activeRide.paymentMethod === 'cash' ? 'Плащане в брой — събрано от пътника' : 'Платено с карта'}
         </Text>
+        {activeRide.driverEarningsBGN != null && (
+          <View style={styles.earningsCard}>
+            <View style={styles.earningsRow}>
+              <Text style={styles.earningsLabel}>Такса на платформата (10%)</Text>
+              <Text style={styles.earningsValue}>−{formatDualCurrency(activeRide.platformFeeBGN ?? 0)}</Text>
+            </View>
+            <View style={styles.earningsRow}>
+              <Text style={styles.earningsLabelBold}>Твоят приход</Text>
+              <Text style={styles.earningsValueBold}>{formatDualCurrency(activeRide.driverEarningsBGN)}</Text>
+            </View>
+          </View>
+        )}
         <Pressable style={styles.primaryButton} onPress={() => navigation.replace('DriverDashboard')}>
           <Text style={styles.primaryLabel}>Обратно към таблото</Text>
         </Pressable>
@@ -150,6 +163,12 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 22, fontWeight: '800', textAlign: 'center' },
   fare: { color: colors.primary, fontSize: 24, fontWeight: '700', marginTop: 12 },
   paymentNote: { color: colors.textMuted, marginTop: 8 },
+  earningsCard: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginTop: 20, width: '100%' },
+  earningsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  earningsLabel: { color: colors.textMuted, fontSize: 13 },
+  earningsValue: { color: colors.textMuted, fontSize: 13 },
+  earningsLabelBold: { color: colors.text, fontWeight: '700' },
+  earningsValueBold: { color: colors.primary, fontWeight: '700' },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 14,
@@ -158,7 +177,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     width: '100%',
   },
-  primaryLabel: { color: colors.background, fontWeight: '700', fontSize: 16 },
+  primaryLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
   banner: { position: 'absolute', top: 56, left: 20, right: 20, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
   bannerTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'center' },
   bannerMeta: { color: colors.textMuted, textAlign: 'center', marginTop: 6 },

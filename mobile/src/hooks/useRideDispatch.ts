@@ -210,6 +210,8 @@ export function useRideDispatch() {
         isOuterZone: estimate.isOuterZone,
         fareEstimateBGN: estimate.fareBGN,
         finalFareBGN: null,
+        platformFeeBGN: null,
+        driverEarningsBGN: null,
         requestedAt: Date.now(),
         acceptedAt: null,
         arrivedAt: null,
@@ -217,11 +219,18 @@ export function useRideDispatch() {
         completedAt: null,
         cancelledAt: null,
         rating: null,
+        reviewText: null,
       };
       await rideRef.set(ride);
-      return rideRef.key as string;
+      const rideId = rideRef.key as string;
+      // Seed the store immediately instead of waiting for the live
+      // listener's next snapshot — on a fresh RTDB connection that can lag
+      // a couple of seconds, which left the rider looking at an empty
+      // "no active ride" screen right after tapping confirm.
+      setActiveRide({ id: rideId, ...ride });
+      return rideId;
     },
-    [firebaseUser]
+    [firebaseUser, setActiveRide]
   );
 
   const cancelRide = useCallback(async (): Promise<void> => {
@@ -261,7 +270,14 @@ export function useRideDispatch() {
     });
     await database().ref(`/driverRequests/${firebaseUser.uid}`).remove();
     await database().ref(`/drivers/${firebaseUser.uid}/status`).set('busy');
-  }, [firebaseUser, incomingOffer]);
+
+    // Same reasoning as requestRide(): seed the store from a direct read
+    // right away rather than waiting on the live listener's next tick.
+    const rideSnapshot = await database().ref(`/rides/${rideId}`).once('value');
+    if (rideSnapshot.exists()) {
+      setActiveRide({ id: rideId, ...(rideSnapshot.val() as Omit<Ride, 'id'>) });
+    }
+  }, [firebaseUser, incomingOffer, setActiveRide]);
 
   const declineOffer = useCallback(async (): Promise<void> => {
     if (!firebaseUser || !incomingOffer) return;
@@ -309,6 +325,9 @@ export function useRideDispatch() {
     const isOuterZone =
       isOutsideCityLimits(activeRide.pickup, pricing) || isOutsideCityLimits(activeRide.dropoff, pricing);
     const finalFareBGN = fareFromDistance(distanceKm, durationMin, activeRide.vehicleType, pricing, isOuterZone);
+    const commissionRate = pricing.platformCommissionRate ?? 0.1;
+    const platformFeeBGN = Math.round(finalFareBGN * commissionRate * 100) / 100;
+    const driverEarningsBGN = Math.round((finalFareBGN - platformFeeBGN) * 100) / 100;
     const completedAt = Date.now();
 
     await database().ref(`/rides/${rideId}`).update({
@@ -318,6 +337,8 @@ export function useRideDispatch() {
       durationMin,
       isOuterZone,
       finalFareBGN,
+      platformFeeBGN,
+      driverEarningsBGN,
     });
 
     const transaction = {
@@ -329,6 +350,8 @@ export function useRideDispatch() {
       distanceKm,
       durationMin,
       fareBGN: finalFareBGN,
+      platformFeeBGN,
+      driverEarningsBGN,
       currency: pricing.currency,
       completedAt,
     };
@@ -342,8 +365,10 @@ export function useRideDispatch() {
       });
   }, [firebaseUser, activeRide]);
 
-  const rateRide = useCallback(async (rideId: string, rating: number): Promise<void> => {
-    await database().ref(`/rides/${rideId}`).update({ rating });
+  const rateRide = useCallback(async (rideId: string, rating: number, reviewText?: string): Promise<void> => {
+    await database()
+      .ref(`/rides/${rideId}`)
+      .update({ rating, reviewText: reviewText?.trim() || null });
   }, []);
 
   return {

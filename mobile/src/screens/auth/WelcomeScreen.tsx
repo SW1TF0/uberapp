@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.textMuted, fontSize: 16, marginTop: 12 },
   actions: { padding: 24 },
   primaryButton: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  primaryLabel: { color: colors.background, fontWeight: '700', fontSize: 16 },
+  primaryLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
   secondaryButton: {
     backgroundColor: colors.card,
     borderRadius: 14,

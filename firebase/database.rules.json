@@ -26,6 +26,12 @@
         "createdAt": {
           ".validate": "newData.isNumber()"
         },
+        "avatarUrl": {
+          ".validate": "newData.isString()"
+        },
+        "notificationsEnabled": {
+          ".validate": "newData.isBoolean()"
+        },
         "$other": {
           ".validate": false
         }
