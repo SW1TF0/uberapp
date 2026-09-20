@@ -46,6 +46,7 @@ module.exports = {
         {
           locationAlwaysAndWhenInUsePermission:
             'Kardzhali Ride споделя местоположението ти с пътниците, докато си онлайн като шофьор.',
+          isIosBackgroundLocationEnabled: true,
         },
       ],
       [
