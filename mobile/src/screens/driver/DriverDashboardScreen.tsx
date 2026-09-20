@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Switch, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Switch, StyleSheet, Pressable, Alert } from 'react-native';
 import database from '@react-native-firebase/database';
 import { User, Wallet } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -73,12 +73,26 @@ export default function DriverDashboardScreen({ navigation }: Props) {
   // The offer can go stale between being shown and being accepted (the
   // rider cancelled, or another client raced this one) — the security
   // rules will simply reject that write, so fall back to declining
-  // cleanly instead of leaving a broken offer on screen.
+  // cleanly instead of leaving a broken offer on screen. If the decline
+  // fallback ALSO fails, surface it rather than leaving the overlay stuck
+  // with no feedback.
   async function respondAccept() {
     try {
       await acceptOffer();
     } catch {
+      try {
+        await declineOffer();
+      } catch (e) {
+        Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно приемане на пътуването.');
+      }
+    }
+  }
+
+  async function respondDecline() {
+    try {
       await declineOffer();
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешен отказ на пътуването.');
     }
   }
 
@@ -113,7 +127,7 @@ export default function DriverDashboardScreen({ navigation }: Props) {
       </View>
 
       {incomingOffer && (
-        <IncomingRequestOverlay offer={incomingOffer} onAccept={respondAccept} onDecline={declineOffer} />
+        <IncomingRequestOverlay offer={incomingOffer} onAccept={respondAccept} onDecline={respondDecline} />
       )}
     </View>
   );

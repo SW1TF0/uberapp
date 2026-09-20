@@ -79,6 +79,7 @@
     "driverRequests": {
       "$driverId": {
         ".read": "auth != null && auth.uid === $driverId",
+        ".write": "auth != null && auth.uid === $driverId",
         "$rideId": {
           ".write": "auth != null && (auth.uid === $driverId || root.child('rides').child($rideId).child('riderId').val() === auth.uid)",
           ".validate": "newData.hasChildren(['rideId','offeredAt','expiresAt','pickupDistanceKm','fareEstimateBGN'])"

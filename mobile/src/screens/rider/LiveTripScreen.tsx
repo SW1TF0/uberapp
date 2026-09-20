@@ -10,6 +10,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import database from '@react-native-firebase/database';
 import { Star } from 'lucide-react-native';
@@ -41,6 +42,18 @@ export default function LiveTripScreen({ navigation }: Props) {
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      await cancelRide();
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешен отказ на пътуването.');
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   useEffect(() => {
     if (!activeRide?.driverId) {
@@ -190,8 +203,8 @@ export default function LiveTripScreen({ navigation }: Props) {
       </View>
 
       {['requested', 'accepted'].includes(activeRide.status) && (
-        <Pressable style={styles.cancelButton} onPress={cancelRide}>
-          <Text style={styles.cancelLabel}>Отказ</Text>
+        <Pressable style={styles.cancelButton} onPress={handleCancel} disabled={cancelling}>
+          {cancelling ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.cancelLabel}>Отказ</Text>}
         </Pressable>
       )}
     </View>
