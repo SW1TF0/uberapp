@@ -1,9 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet, Alert, RefreshControl } from 'react-native';
-import { Ban, CheckCircle2, Star } from 'lucide-react-native';
+import { View, Text, Image, FlatList, Pressable, ActivityIndicator, StyleSheet, Alert, RefreshControl } from 'react-native';
+import { Ban, CheckCircle2, Clock, Star, UserCheck } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
 import { formatDualCurrency } from '../../utils/currency';
-import { AdminDriverRow, fetchAllDriversWithDues, markDriverSettled, setUserBanned } from '../../services/admin';
+import {
+  AdminDriverRow,
+  fetchAllDriversWithDues,
+  markDriverSettled,
+  setDriverApproved,
+  setUserBanned,
+} from '../../services/admin';
 
 export default function AdminDriversScreen() {
   const [rows, setRows] = useState<AdminDriverRow[]>([]);
@@ -34,6 +40,18 @@ export default function AdminDriversScreen() {
     setBusyUid(row.uid);
     try {
       await setUserBanned(row.uid, !row.banned);
+      await load();
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешна операция.');
+    } finally {
+      setBusyUid(null);
+    }
+  }
+
+  async function approve(row: AdminDriverRow) {
+    setBusyUid(row.uid);
+    try {
+      await setDriverApproved(row.uid, true);
       await load();
     } catch (e) {
       Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешна операция.');
@@ -86,8 +104,13 @@ export default function AdminDriversScreen() {
         renderItem={({ item }) => {
           const busy = busyUid === item.uid;
           return (
-            <View style={[styles.card, item.banned && styles.cardBanned]}>
+            <View style={[styles.card, item.banned && styles.cardBanned, !item.approved && styles.cardPending]}>
               <View style={styles.cardTop}>
+                {item.carPhotoUrl ? (
+                  <Image source={{ uri: item.carPhotoUrl }} style={styles.carThumb} />
+                ) : (
+                  <View style={styles.carThumbPlaceholder} />
+                )}
                 <View style={styles.flexShrink}>
                   <Text style={styles.name}>{item.name}</Text>
                   <Text style={styles.meta}>{item.phone || item.email}</Text>
@@ -103,39 +126,72 @@ export default function AdminDriversScreen() {
                 </View>
               </View>
 
-              <View style={styles.duesRow}>
-                <Text style={styles.duesLabel}>Дължи на платформата</Text>
-                <Text style={styles.duesValue}>{formatDualCurrency(item.owedBGN)}</Text>
-              </View>
-              <Text style={styles.duesMeta}>{item.unsettledRideCount} неразчетени пътувания · статус: {item.status}</Text>
-              {item.banned && <Text style={styles.bannedTag}>БАНИРАН</Text>}
+              {!item.approved ? (
+                <>
+                  <View style={styles.pendingRow}>
+                    <Clock size={14} color={colors.warning} />
+                    <Text style={styles.pendingTag}>ЧАКА ОДОБРЕНИЕ</Text>
+                  </View>
+                  <View style={styles.actionsRow}>
+                    <Pressable style={[styles.actionButton, styles.approveButton]} disabled={busy} onPress={() => approve(item)}>
+                      {busy ? (
+                        <ActivityIndicator color={colors.onPrimary} size="small" />
+                      ) : (
+                        <>
+                          <UserCheck size={16} color={colors.onPrimary} />
+                          <Text style={styles.approveLabel}>Одобри</Text>
+                        </>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      style={[styles.actionButton, item.banned ? styles.unbanButton : styles.banButton]}
+                      disabled={busy}
+                      onPress={() => toggleBan(item)}
+                    >
+                      <Ban size={16} color={item.banned ? colors.text : '#ffffff'} />
+                      <Text style={item.banned ? styles.unbanLabel : styles.banLabel}>
+                        {item.banned ? 'Отбани' : 'Отхвърли'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.duesRow}>
+                    <Text style={styles.duesLabel}>Дължи на платформата</Text>
+                    <Text style={styles.duesValue}>{formatDualCurrency(item.owedBGN)}</Text>
+                  </View>
+                  <Text style={styles.duesMeta}>{item.unsettledRideCount} неразчетени пътувания · статус: {item.status}</Text>
+                  {item.banned && <Text style={styles.bannedTag}>БАНИРАН</Text>}
 
-              <View style={styles.actionsRow}>
-                <Pressable
-                  style={[styles.actionButton, styles.settleButton]}
-                  disabled={busy || item.owedBGN <= 0}
-                  onPress={() => confirmSettle(item)}
-                >
-                  {busy ? (
-                    <ActivityIndicator color={colors.onPrimary} size="small" />
-                  ) : (
-                    <>
-                      <CheckCircle2 size={16} color={colors.onPrimary} />
-                      <Text style={styles.settleLabel}>Платено</Text>
-                    </>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={[styles.actionButton, item.banned ? styles.unbanButton : styles.banButton]}
-                  disabled={busy}
-                  onPress={() => toggleBan(item)}
-                >
-                  <Ban size={16} color={item.banned ? colors.text : '#ffffff'} />
-                  <Text style={item.banned ? styles.unbanLabel : styles.banLabel}>
-                    {item.banned ? 'Отбани' : 'Бани'}
-                  </Text>
-                </Pressable>
-              </View>
+                  <View style={styles.actionsRow}>
+                    <Pressable
+                      style={[styles.actionButton, styles.settleButton]}
+                      disabled={busy || item.owedBGN <= 0}
+                      onPress={() => confirmSettle(item)}
+                    >
+                      {busy ? (
+                        <ActivityIndicator color={colors.onPrimary} size="small" />
+                      ) : (
+                        <>
+                          <CheckCircle2 size={16} color={colors.onPrimary} />
+                          <Text style={styles.settleLabel}>Платено</Text>
+                        </>
+                      )}
+                    </Pressable>
+                    <Pressable
+                      style={[styles.actionButton, item.banned ? styles.unbanButton : styles.banButton]}
+                      disabled={busy}
+                      onPress={() => toggleBan(item)}
+                    >
+                      <Ban size={16} color={item.banned ? colors.text : '#ffffff'} />
+                      <Text style={item.banned ? styles.unbanLabel : styles.banLabel}>
+                        {item.banned ? 'Отбани' : 'Бани'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </>
+              )}
             </View>
           );
         }}
@@ -152,7 +208,10 @@ const styles = StyleSheet.create({
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
   card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10 },
   cardBanned: { borderWidth: 1, borderColor: colors.danger },
+  cardPending: { borderWidth: 1, borderColor: colors.warning },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  carThumb: { width: 48, height: 48, borderRadius: 10 },
+  carThumbPlaceholder: { width: 48, height: 48, borderRadius: 10, backgroundColor: colors.surface },
   flexShrink: { flexShrink: 1 },
   name: { color: colors.text, fontSize: 16, fontWeight: '700' },
   meta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
@@ -163,6 +222,8 @@ const styles = StyleSheet.create({
   duesValue: { color: colors.primary, fontWeight: '800', fontSize: 18 },
   duesMeta: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   bannedTag: { color: colors.danger, fontWeight: '800', fontSize: 11, marginTop: 8, letterSpacing: 1 },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  pendingTag: { color: colors.warning, fontWeight: '800', fontSize: 11, letterSpacing: 1 },
   actionsRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   actionButton: {
     flex: 1,
@@ -175,6 +236,8 @@ const styles = StyleSheet.create({
   },
   settleButton: { backgroundColor: colors.primary },
   settleLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 13 },
+  approveButton: { backgroundColor: colors.primary },
+  approveLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 13 },
   banButton: { backgroundColor: colors.danger },
   banLabel: { color: '#ffffff', fontWeight: '700', fontSize: 13 },
   unbanButton: { backgroundColor: colors.surface },

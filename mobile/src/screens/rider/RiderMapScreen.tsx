@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import * as Location from 'expo-location';
 import database from '@react-native-firebase/database';
-import { History, User } from 'lucide-react-native';
+import { History, Search, User } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { CITY_CENTER, DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useAuth } from '../../hooks/useAuth';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
@@ -79,9 +80,13 @@ export default function RiderMapScreen({ navigation }: Props) {
 
       <View style={styles.sheet}>
         <Pressable style={styles.searchBar} onPress={() => navigation.navigate('DestinationPicker')}>
+          <Search size={18} color={colors.textMuted} />
           <Text style={styles.searchPlaceholder}>Накъде отиваш?</Text>
         </Pressable>
-        <Text style={styles.driverCount}>{drivers.length} шофьора онлайн в Кърджали</Text>
+        <View style={styles.driverCountRow}>
+          <View style={[styles.dot, drivers.length > 0 && styles.dotActive]} />
+          <Text style={styles.driverCount}>{drivers.length} шофьора онлайн в Кърджали</Text>
+        </View>
       </View>
     </View>
   );
@@ -106,9 +111,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
+    ...shadows.card,
   },
   topBarIcons: { flexDirection: 'row', gap: 10 },
-  iconButton: { backgroundColor: colors.surface, padding: 10, borderRadius: 12 },
+  iconButton: { backgroundColor: colors.surface, padding: 10, borderRadius: 12, ...shadows.card },
   sheet: {
     position: 'absolute',
     bottom: 24,
@@ -117,8 +123,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 18,
+    ...shadows.sheet,
   },
-  searchBar: { backgroundColor: colors.card, borderRadius: 14, padding: 16 },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 16,
+  },
   searchPlaceholder: { color: colors.textMuted, fontSize: 16 },
-  driverCount: { color: colors.textMuted, marginTop: 10, textAlign: 'center', fontSize: 13 },
+  driverCountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.textMuted },
+  dotActive: { backgroundColor: colors.primary },
+  driverCount: { color: colors.textMuted, textAlign: 'center', fontSize: 13 },
 });

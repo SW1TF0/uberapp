@@ -88,6 +88,11 @@ export function useAuth() {
           vehicle,
         },
         [`/drivers/${user.uid}/status`]: 'offline',
+        // New drivers can't go online until an admin approves them (see
+        // "Admin panel" in README.md and database.rules.json's approved
+        // field) — this is the only value a driver is allowed to
+        // self-write there; only the admin account can flip it to true.
+        [`/drivers/${user.uid}/approved`]: false,
       };
       await database().ref().update(updates);
     },

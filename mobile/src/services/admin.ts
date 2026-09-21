@@ -8,9 +8,11 @@ export type AdminDriverRow = {
   phone: string;
   email: string;
   vehicle: DriverVehicle;
+  carPhotoUrl?: string;
   rating: number;
   status: DriverStatus;
   banned: boolean;
+  approved: boolean;
   owedBGN: number;
   unsettledRideCount: number;
 };
@@ -57,16 +59,23 @@ export async function fetchAllDriversWithDues(): Promise<AdminDriverRow[]> {
         phone: driver.profile?.phone ?? user?.phone ?? '',
         email: user?.email ?? '',
         vehicle: driver.profile?.vehicle,
+        carPhotoUrl: driver.profile?.carPhotoUrl,
         rating: driver.profile?.rating ?? 5,
         status: driver.status,
         banned: user?.banned === true,
+        approved: driver.approved === true,
         owedBGN,
         unsettledRideCount: unsettled.length,
       };
     })
   );
 
-  return rows.sort((a, b) => b.owedBGN - a.owedBGN);
+  // Drivers waiting on approval float to the top — that's the queue an
+  // admin needs to clear first — then the rest sort by amount owed.
+  return rows.sort((a, b) => {
+    if (a.approved !== b.approved) return a.approved ? 1 : -1;
+    return b.owedBGN - a.owedBGN;
+  });
 }
 
 export async function fetchAllClients(): Promise<UserProfile[]> {
@@ -86,6 +95,10 @@ export async function setUserBanned(uid: string, banned: boolean): Promise<void>
 
 export async function markDriverSettled(driverId: string): Promise<void> {
   await database().ref(`/drivers/${driverId}/settledUpTo`).set(Date.now());
+}
+
+export async function setDriverApproved(driverId: string, approved: boolean): Promise<void> {
+  await database().ref(`/drivers/${driverId}/approved`).set(approved);
 }
 
 export async function fetchAllReports(): Promise<Report[]> {

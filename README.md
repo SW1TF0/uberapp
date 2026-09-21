@@ -46,7 +46,7 @@ mobile/
 ## Data model (Realtime Database)
 
 - `/users/{uid}` — `{ uid, role: 'rider'|'driver', name, phone, email, createdAt, avatarUrl?, notificationsEnabled?, banned? }`. `banned` is admin-only-writable — see "Admin panel" below.
-- `/drivers/{uid}` — `{ profile: { name, phone, rating, ratingCount, vehicle, avatarUrl? }, status: 'offline'|'online'|'busy', location: { lat, lng, heading, speed, updatedAt }, settledUpTo? }`. Keyed by the driver's own auth uid, so rules stay simple. `rating`/`ratingCount` are self-written by the driver's own app (see "Reviews & ratings" below) — riders never write to another user's driver node. `settledUpTo` (admin-only-writable) is a timestamp: completed rides after it are what the driver currently owes the platform.
+- `/drivers/{uid}` — `{ profile: { name, phone, rating, ratingCount, vehicle, avatarUrl?, carPhotoUrl? }, status: 'offline'|'online'|'busy', location: { lat, lng, heading, speed, updatedAt }, settledUpTo?, approved }`. Keyed by the driver's own auth uid, so rules stay simple. `rating`/`ratingCount` are self-written by the driver's own app (see "Reviews & ratings" below) — riders never write to another user's driver node. `settledUpTo` (admin-only-writable) is a timestamp: completed rides after it are what the driver currently owes the platform. `approved` (self-writable only once, as `false`, at signup — otherwise admin-only) gates whether the driver can ever set their own `status` to `'online'`; see "Admin panel" below.
 - `/reports/{reportId}` — `{ reporterId, reporterRole, reportedId, rideId, reason, createdAt }`. Anyone can create one about themselves; only the admin account can read the list back. See "Admin panel" below.
 - `/rides/{rideId}` — full ride lifecycle document (`pickup`, `dropoff`, `status`, fare fields, timestamps, `rating`, `reviewText`). `status` moves `requested → accepted → arrived → in_progress → completed` (or `cancelled` at any point before `completed`). On completion also carries `platformFeeBGN`/`driverEarningsBGN` (see "Platform commission" below). For card rides, also `paymentStatus`/`stripePaymentIntentId` — see "Card payments" below; these two fields can only ever be written by the Stripe Cloud Functions (Admin SDK), never by a client.
 - `/rides/{rideId}/matching` — matching bookkeeping (`offeredDriverId`, `offeredAt`, `expiresAt`, `excludedDriverIds`), written by the rider's own client (see below).
@@ -93,6 +93,7 @@ server-authoritative version of the same logic.
 - **10% platform commission.** `completeRide()` in `useRideDispatch.ts` splits the final fare into `platformFeeBGN` (10%, from `pricing_rules.platformCommissionRate`) and `driverEarningsBGN` (the rest), stored on both the ride and its `/transactions` record. The driver sees this breakdown on the trip-complete screen and totalled on the new **Earnings & Reviews** screen (wallet icon on the driver dashboard).
 - **Reviews.** Riders can leave a star rating *and* a written review after a completed ride (stored on the ride itself, which they already have write access to). A driver's aggregate rating isn't a running counter riders write to — the security rules don't allow that — instead each driver's own app computes it from their own completed rides (`mobile/src/utils/reviews.ts`) and self-writes the average to `/drivers/{uid}/profile/rating`. The same computation powers the reviews list on the Earnings & Reviews screen.
 - **Avatar photos.** Either role can pick a profile photo (Profile screen, tap the camera badge on the avatar) via `expo-image-picker`, resized/compressed with `expo-image-manipulator`, and stored as a base64 data URI on `/users/{uid}/avatarUrl` (and `/drivers/{uid}/profile/avatarUrl` for drivers, since that's the record riders actually read) — no file storage service involved at all. Shown on the driver card during a live trip and on the rider's post-trip rating screen.
+- **Car photos.** Drivers get a second photo picker on the Profile screen, same base64-in-RTDB approach (just a wider 4:3 crop), stored at `/drivers/{uid}/profile/carPhotoUrl`. Shown as a strip above the driver card on the rider's live-trip screen and as a thumbnail on the admin's Drivers list, so a rider can actually recognize the car pulling up.
 - **Settings + in-app notifications.** A Settings screen (gear icon on Profile) toggles notifications, stored on the user's profile. When enabled, `useRideNotifications.ts` fires a local notification (`expo-notifications`) on key status changes — driver matched, arrived, trip started/completed for the rider; a new ride request for the driver. **This only works while the app is open or backgrounded but still running** — there's no server to wake it up from fully closed, which real push notifications need (see "Optional upgrade" below).
 
 ## Card payments (Stripe)
@@ -168,15 +169,32 @@ just sign in from the app's normal Welcome → EmailAuth screen using the
 "Вход" (sign in) tab.
 
 What it can do:
-- **Шофьори (Drivers)** — every driver, their vehicle, rating, and how
-  much platform commission they currently owe (the sum of `platformFeeBGN`
-  across their completed cash rides since the last time they were marked
-  settled — there's no automated payout here, this is meant for an admin
-  collecting that cash periodically). A "Платено" button resets the
-  counter; a "Бани"/"Отбани" button toggles the ban.
+- **Шофьори (Drivers)** — every driver, their vehicle (+ car photo, if
+  they added one), rating, and how much platform commission they
+  currently owe (the sum of `platformFeeBGN` across their completed cash
+  rides since the last time they were marked settled — there's no
+  automated payout here, this is meant for an admin collecting that cash
+  periodically). A "Платено" button resets the counter; a "Бани"/"Отбани"
+  button toggles the ban. A driver who hasn't been approved yet (see
+  "Driver approval" below) shows at the top of the list with an "Одобри"
+  button instead of the financial info, since they can't complete any
+  rides until approved.
 - **Клиенти (Clients)** — every rider, with the same ban/unban toggle.
 - **Жалби (Reports)** — every report riders/drivers have filed against
   each other (see below).
+
+**Driver approval:** a new driver signup can't actually go online (and so
+can never be matched with a rider) until the admin approves them —
+`completeDriverProfile()` writes `/drivers/{uid}/approved: false` at
+signup, and `database.rules.json` only lets the *admin* ever flip it to
+true; a driver's own client can only write it once, as `false`, when
+their driver record doesn't exist yet. A driver who's still pending sees
+a "Чакаш одобрение" screen instead of the normal dashboard (they can
+still open their Profile to set their photo/car photo while waiting).
+**Note:** deploying this rule change means any driver accounts created
+*before* it (i.e. your own test driver from earlier) won't have an
+`approved` field at all, which reads as "not approved" — you'll need to
+approve them once from the admin panel after updating.
 
 **Bans are enforced server-side**, not just hidden in the UI: a banned
 rider's ride-creation write is rejected by `database.rules.json`, and a
@@ -202,6 +220,7 @@ manually bans someone if warranted.
 - `transactions`/`riderHistory`/`driverHistory` are writable only by the completing driver, for a ride already marked `completed`, and readable only by that ride's own rider/driver.
 - `/users/{uid}` accepts `avatarUrl` and `notificationsEnabled` as additional self-writable fields alongside the original ones; anything else is still rejected by its catch-all deny rule. `banned` is the one exception that's readable/self-writable-only-as-a-no-op — a normal write can never actually change it, only a write from the admin account (matched by `auth.token.email`) can.
 - The admin account (see "Admin panel" above) additionally gets read access to all of `/users`, `/rides`, and `/driverHistory/*` (needed to list every driver/client and compute what each driver owes), and is the only account that can write `/drivers/{uid}/settledUpTo` or read `/reports` back (anyone can write their own report there, but only the admin can read the list).
+- A driver going online (`/drivers/{uid}/status` → `'online'`) additionally requires `banned !== true` on their `/users` record and `approved === true` on their `/drivers` record — so a banned or not-yet-approved driver is blocked at the exact point that would let them receive ride offers, not just hidden in the UI.
 
 Deploy with the Firebase CLI from `firebase/`:
 ```

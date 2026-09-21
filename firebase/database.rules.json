@@ -60,12 +60,20 @@
           },
           "avatarUrl": {
             ".validate": "newData.isString() && newData.val().length < 150000"
+          },
+          "carPhotoUrl": {
+            ".validate": "newData.isString() && newData.val().length < 150000"
           }
+        },
+
+        "approved": {
+          ".write": "auth != null && (auth.uid === $driverId || auth.token.email === 'krasimiruzun@smartmenukj.com')",
+          ".validate": "newData.isBoolean() && ((!data.exists() && newData.val() === false) || newData.val() === data.val() || auth.token.email === 'krasimiruzun@smartmenukj.com')"
         },
 
         "status": {
           ".write": "auth != null && auth.uid === $driverId",
-          ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'offline' || newData.val() === 'busy') && (newData.val() !== 'online' || root.child('users').child($driverId).child('banned').val() !== true)"
+          ".validate": "newData.isString() && (newData.val() === 'online' || newData.val() === 'offline' || newData.val() === 'busy') && (newData.val() !== 'online' || (root.child('users').child($driverId).child('banned').val() !== true && root.child('drivers').child($driverId).child('approved').val() === true))"
         },
 
         "location": {

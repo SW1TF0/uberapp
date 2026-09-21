@@ -18,6 +18,7 @@ import { useStripe } from '@stripe/stripe-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { useRiderRideNotifications } from '../../hooks/useRideNotifications';
@@ -249,26 +250,31 @@ export default function LiveTripScreen({ navigation }: Props) {
         {activeRide.status === 'requested' && <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />}
 
         {driver && activeRide.status !== 'requested' && (
-          <View style={[styles.driverCard, styles.driverCardRow]}>
-            {driver.profile.avatarUrl ? (
-              <Image source={{ uri: driver.profile.avatarUrl }} style={styles.smallAvatar} />
-            ) : (
-              <View style={styles.smallAvatarPlaceholder}>
-                <Text style={styles.avatarInitial}>{driver.profile.name?.[0] ?? '?'}</Text>
-              </View>
+          <View style={styles.driverCard}>
+            {driver.profile.carPhotoUrl && (
+              <Image source={{ uri: driver.profile.carPhotoUrl }} style={styles.carPhotoStrip} />
             )}
-            <View style={styles.flexShrink}>
-            <Text style={styles.driverName}>
-              {driver.profile.name} · ★ {driver.profile.rating.toFixed(2)}
-            </Text>
-            <Text style={styles.driverVehicle}>
-              {driver.profile.vehicle.color} {driver.profile.vehicle.make} {driver.profile.vehicle.model} ·{' '}
-              {driver.profile.vehicle.plate}
-            </Text>
+            <View style={styles.driverCardRow}>
+              {driver.profile.avatarUrl ? (
+                <Image source={{ uri: driver.profile.avatarUrl }} style={styles.smallAvatar} />
+              ) : (
+                <View style={styles.smallAvatarPlaceholder}>
+                  <Text style={styles.avatarInitial}>{driver.profile.name?.[0] ?? '?'}</Text>
+                </View>
+              )}
+              <View style={styles.flexShrink}>
+              <Text style={styles.driverName}>
+                {driver.profile.name} · ★ {driver.profile.rating.toFixed(2)}
+              </Text>
+              <Text style={styles.driverVehicle}>
+                {driver.profile.vehicle.color} {driver.profile.vehicle.make} {driver.profile.vehicle.model} ·{' '}
+                {driver.profile.vehicle.plate}
+              </Text>
+              </View>
+              <Pressable style={styles.reportIconButton} onPress={() => setReportOpen(true)}>
+                <Flag size={16} color={colors.textMuted} />
+              </Pressable>
             </View>
-            <Pressable style={styles.reportIconButton} onPress={() => setReportOpen(true)}>
-              <Flag size={16} color={colors.textMuted} />
-            </Pressable>
           </View>
         )}
       </View>
@@ -330,9 +336,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   doneLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
-  banner: { position: 'absolute', top: 56, left: 20, right: 20, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
+  banner: {
+    position: 'absolute',
+    top: 56,
+    left: 20,
+    right: 20,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    ...shadows.card,
+  },
   bannerTitle: { color: colors.text, fontSize: 17, fontWeight: '700', textAlign: 'center' },
   driverCard: { marginTop: 12, backgroundColor: colors.card, borderRadius: 12, padding: 12 },
+  carPhotoStrip: { width: '100%', height: 90, borderRadius: 10, marginBottom: 10 },
   driverCardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   flexShrink: { flexShrink: 1 },
   driverName: { color: colors.text, fontWeight: '600' },
@@ -368,6 +384,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
+    ...shadows.card,
   },
   cancelLabel: { color: '#ffffff', fontWeight: '700' },
 });

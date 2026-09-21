@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, Image, ActivityIndicator, StyleSheet, Alert } from 'react-native';
-import { LogOut, Camera, Settings as SettingsIcon } from 'lucide-react-native';
+import database from '@react-native-firebase/database';
+import { LogOut, Camera, Car, Settings as SettingsIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../hooks/useAuth';
-import { pickAndUploadAvatar } from '../../services/avatar';
+import { pickAndUploadAvatar, pickAndUploadCarPhoto } from '../../services/avatar';
 
 export default function ProfileScreen() {
   const { profile, firebaseUser, signOut } = useAuth();
   const navigation = useNavigation<any>();
   const [uploading, setUploading] = useState(false);
+  const [uploadingCar, setUploadingCar] = useState(false);
+  const [carPhotoUrl, setCarPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!firebaseUser || profile?.role !== 'driver') return undefined;
+    const ref = database().ref(`/drivers/${firebaseUser.uid}/profile/carPhotoUrl`);
+    const listener = ref.on('value', (snap) => setCarPhotoUrl(snap.val() as string | null));
+    return () => ref.off('value', listener);
+  }, [firebaseUser, profile?.role]);
 
   async function changeAvatar() {
     if (!firebaseUser || !profile) return;
@@ -20,6 +30,18 @@ export default function ProfileScreen() {
       Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно качване на снимката.');
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function changeCarPhoto() {
+    if (!firebaseUser) return;
+    setUploadingCar(true);
+    try {
+      await pickAndUploadCarPhoto(firebaseUser.uid);
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно качване на снимката.');
+    } finally {
+      setUploadingCar(false);
     }
   }
 
@@ -41,6 +63,26 @@ export default function ProfileScreen() {
       <Text style={styles.name}>{profile?.name}</Text>
       <Text style={styles.phone}>{profile?.phone}</Text>
       <Text style={styles.email}>{profile?.email}</Text>
+
+      {profile?.role === 'driver' && (
+        <Pressable style={styles.carPhotoWrap} onPress={changeCarPhoto} disabled={uploadingCar}>
+          {carPhotoUrl ? (
+            <Image source={{ uri: carPhotoUrl }} style={styles.carPhoto} />
+          ) : (
+            <View style={styles.carPhotoPlaceholder}>
+              <Car size={22} color={colors.textMuted} />
+              <Text style={styles.carPhotoPlaceholderText}>Добави снимка на автомобила</Text>
+            </View>
+          )}
+          <View style={styles.carCameraBadge}>
+            {uploadingCar ? (
+              <ActivityIndicator size="small" color={colors.onPrimary} />
+            ) : (
+              <Camera size={14} color={colors.onPrimary} />
+            )}
+          </View>
+        </Pressable>
+      )}
 
       <Pressable style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
         <SettingsIcon size={18} color={colors.text} />
@@ -84,6 +126,32 @@ const styles = StyleSheet.create({
   name: { color: colors.text, fontSize: 20, fontWeight: '700', marginTop: 16 },
   phone: { color: colors.textMuted, marginTop: 4 },
   email: { color: colors.textMuted, marginTop: 2, fontSize: 13 },
+  carPhotoWrap: { position: 'relative', marginTop: 24, width: 220 },
+  carPhoto: { width: 220, height: 140, borderRadius: 16 },
+  carPhotoPlaceholder: {
+    width: 220,
+    height: 140,
+    borderRadius: 16,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  carPhotoPlaceholderText: { color: colors.textMuted, fontSize: 12, textAlign: 'center' },
+  carCameraBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: colors.primary,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',

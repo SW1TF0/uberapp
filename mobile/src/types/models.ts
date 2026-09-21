@@ -50,6 +50,7 @@ export type DriverRecord = {
     ratingCount: number;
     vehicle: DriverVehicle;
     avatarUrl?: string;
+    carPhotoUrl?: string;
   };
   status: DriverStatus;
   location: DriverLocation | null;
@@ -57,6 +58,10 @@ export type DriverRecord = {
   // driver currently owes the platform in commission; set by the admin
   // panel's "mark as settled" action, which just bumps this to now.
   settledUpTo?: number;
+  // Set to false by completeDriverProfile() at signup; only the admin can
+  // flip it to true (database.rules.json). A driver can't set their own
+  // status to 'online' — and so can never be matched — until this is true.
+  approved: boolean;
 };
 
 export type GeoPoint = {

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Switch, StyleSheet, Pressable, Alert } from 'react-native';
 import database from '@react-native-firebase/database';
-import { User, Wallet } from 'lucide-react-native';
+import { Clock, User, Wallet } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DriverStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useAuth } from '../../hooks/useAuth';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
@@ -18,10 +19,11 @@ import { GeoPoint } from '../../types/models';
 type Props = NativeStackScreenProps<DriverStackParamList, 'DriverDashboard'>;
 
 export default function DriverDashboardScreen({ navigation }: Props) {
-  const { profile, firebaseUser } = useAuth();
+  const { profile, firebaseUser, signOut } = useAuth();
   const { activeRide, incomingOffer, acceptOffer, declineOffer } = useRideDispatch();
   useDriverOfferNotifications(incomingOffer);
   const [online, setOnline] = useState(false);
+  const [approved, setApproved] = useState<boolean | null>(null);
   const [ownLocation, setOwnLocation] = useState<GeoPoint | null>(null);
   useDriverLocation(online);
 
@@ -35,6 +37,7 @@ export default function DriverDashboardScreen({ navigation }: Props) {
       // Treat 'busy' (mid-trip) as still toggled on for display purposes;
       // only 'offline' shows the switch as off.
       setOnline(record?.status ? record.status !== 'offline' : false);
+      setApproved(record?.approved === true);
       if (record?.location) setOwnLocation(record.location);
     });
     return () => ref.off('value', listener);
@@ -96,6 +99,25 @@ export default function DriverDashboardScreen({ navigation }: Props) {
     }
   }
 
+  if (approved === false) {
+    return (
+      <View style={styles.pendingWrap}>
+        <Clock size={56} color={colors.warning} />
+        <Text style={styles.pendingTitle}>Чакаш одобрение</Text>
+        <Text style={styles.pendingBody}>
+          Профилът ти на шофьор все още не е одобрен от администратор. Ще можеш да излизаш онлайн и да получаваш
+          заявки веднага щом бъде прегледан.
+        </Text>
+        <Pressable style={styles.pendingProfileButton} onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.pendingProfileLabel}>Профил</Text>
+        </Pressable>
+        <Pressable style={styles.pendingSignOutButton} onPress={signOut}>
+          <Text style={styles.pendingSignOutLabel}>Изход</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.flex}>
       <LeafletMap
@@ -135,6 +157,25 @@ export default function DriverDashboardScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  pendingWrap: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  pendingTitle: { color: colors.text, fontSize: 22, fontWeight: '800', marginTop: 20, textAlign: 'center' },
+  pendingBody: { color: colors.textMuted, marginTop: 12, textAlign: 'center', lineHeight: 20 },
+  pendingProfileButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    marginTop: 28,
+  },
+  pendingProfileLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
+  pendingSignOutButton: { marginTop: 16, paddingVertical: 10, paddingHorizontal: 20 },
+  pendingSignOutLabel: { color: colors.textMuted, fontWeight: '600' },
   topBar: {
     position: 'absolute',
     top: 56,
@@ -152,11 +193,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 14,
+    ...shadows.card,
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
   statusText: { color: colors.text, fontWeight: '600' },
   topBarIcons: { flexDirection: 'row', gap: 10 },
-  iconButton: { backgroundColor: colors.surface, padding: 10, borderRadius: 12 },
+  iconButton: { backgroundColor: colors.surface, padding: 10, borderRadius: 12, ...shadows.card },
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -166,6 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
+    ...shadows.card,
   },
   driverName: { color: colors.text, fontWeight: '700', fontSize: 16 },
   driverHint: { color: colors.textMuted, marginTop: 4, fontSize: 13, textAlign: 'center' },
