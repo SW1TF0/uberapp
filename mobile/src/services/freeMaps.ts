@@ -1,9 +1,30 @@
 import { GeoPoint } from '../types/models';
+import { CITY_CENTER } from '../data/kardzhaliRegion';
+import { haversineKm } from '../utils/fare';
 
-// Rough bounding box around Kardzhali used to bias/limit search results:
-// left,top,right,bottom (lon,lat,lon,lat).
-const VIEWBOX = '25.25,41.72,25.55,41.55';
+// The app's whole service area: search results (and, with the hard
+// haversine filter below, results themselves) are limited to this radius
+// around Kardzhali's center — not the pricing engine's separate, smaller
+// cityGeofence.radiusKm, which only decides when the outer-zone fare
+// surcharge kicks in.
+const SERVICE_RADIUS_KM = 20;
 const USER_AGENT = 'KardzhaliRide/1.0 (personal, non-commercial demo app)';
+
+// A proper radius-sized bounding box, not a rough eyeballed one: 1°
+// latitude is ~111km everywhere, but 1° longitude shrinks by cos(latitude)
+// the further from the equator you are, so the two deltas differ.
+function boundingBoxViewbox(center: { lat: number; lng: number }, radiusKm: number): string {
+  const latDelta = radiusKm / 111;
+  const lonDelta = radiusKm / (111 * Math.cos((center.lat * Math.PI) / 180));
+  const left = center.lng - lonDelta;
+  const right = center.lng + lonDelta;
+  const top = center.lat + latDelta;
+  const bottom = center.lat - latDelta;
+  return `${left.toFixed(4)},${top.toFixed(4)},${right.toFixed(4)},${bottom.toFixed(4)}`;
+}
+
+const SERVICE_CENTER = { lat: CITY_CENTER.latitude, lng: CITY_CENTER.longitude };
+const VIEWBOX = boundingBoxViewbox(SERVICE_CENTER, SERVICE_RADIUS_KM);
 
 export type PlacePrediction = {
   placeId: string;
@@ -48,6 +69,16 @@ async function nominatimSearch(query: string, bounded: boolean, limit: number): 
   return (await response.json()) as Array<Record<string, any>>;
 }
 
+// Hard cutoff at SERVICE_RADIUS_KM regardless of which query path found a
+// result — the viewbox only biases Nominatim's ranking, it doesn't
+// guarantee every hit is actually inside it (bounded=0 especially), so
+// this is what actually enforces "within 20km of Kardzhali".
+function withinServiceArea(predictions: PlacePrediction[]): PlacePrediction[] {
+  return predictions.filter(
+    (p) => haversineKm(SERVICE_CENTER, { lat: p.lat, lng: p.lng }) <= SERVICE_RADIUS_KM
+  );
+}
+
 // Nominatim (OpenStreetMap) search — free, no API key, no billing account.
 // This hits the public demo endpoint, which asks for at most ~1
 // request/second and a descriptive User-Agent identifying the app; both
@@ -69,7 +100,7 @@ export async function searchPlaces(query: string): Promise<PlacePrediction[]> {
     if (results.length === 0) {
       results = await nominatimSearch(trimmed, false, 8);
     }
-    return toPredictions(results);
+    return withinServiceArea(toPredictions(results));
   } catch {
     return [];
   }
@@ -106,7 +137,7 @@ export async function fetchRecommendedPlaces(): Promise<RecommendedPlace[]> {
     for (const { query, kind } of RECOMMENDED_QUERIES) {
       try {
         const results = await nominatimSearch(query, true, 1);
-        const [prediction] = toPredictions(results);
+        const [prediction] = withinServiceArea(toPredictions(results));
         if (prediction) places.push({ ...prediction, mainText: query.split(',')[0], kind });
       } catch {
         // Skip a landmark that fails to resolve rather than failing the
