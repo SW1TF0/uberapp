@@ -1,16 +1,32 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import * as Location from 'expo-location';
-import { ArrowLeft, MapPin, Search } from 'lucide-react-native';
+import { ArrowLeft, Bus, Building2, GraduationCap, HeartPulse, Landmark, MapPin, Search, ShoppingBag } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
 import { CITY_CENTER, DEFAULT_REGION } from '../../data/kardzhaliRegion';
-import { DirectionsResult, PlacePrediction, fetchDirections, searchPlaces } from '../../services/freeMaps';
+import {
+  DirectionsResult,
+  PlacePrediction,
+  RecommendedPlace,
+  fetchDirections,
+  fetchRecommendedPlaces,
+  searchPlaces,
+} from '../../services/freeMaps';
 import { LeafletMap } from '../../components/LeafletMap';
 import { GeoPoint } from '../../types/models';
 
 type Props = NativeStackScreenProps<RiderStackParamList, 'DestinationPicker'>;
+
+const RECOMMENDED_ICONS: Record<string, typeof MapPin> = {
+  landmark: Landmark,
+  bus: Bus,
+  hospital: HeartPulse,
+  shop: ShoppingBag,
+  school: GraduationCap,
+  building: Building2,
+};
 
 export default function DestinationPickerScreen({ navigation }: Props) {
   const [pickup, setPickup] = useState<GeoPoint>({
@@ -23,6 +39,8 @@ export default function DestinationPickerScreen({ navigation }: Props) {
   const [searching, setSearching] = useState(false);
   const [dropoff, setDropoff] = useState<GeoPoint | null>(null);
   const [route, setRoute] = useState<DirectionsResult | null>(null);
+  const [recommended, setRecommended] = useState<RecommendedPlace[]>([]);
+  const [loadingRecommended, setLoadingRecommended] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -32,6 +50,12 @@ export default function DestinationPickerScreen({ navigation }: Props) {
       const loc = await Location.getCurrentPositionAsync({});
       setPickup({ lat: loc.coords.latitude, lng: loc.coords.longitude, address: 'Текущо местоположение' });
     })();
+  }, []);
+
+  useEffect(() => {
+    fetchRecommendedPlaces()
+      .then(setRecommended)
+      .finally(() => setLoadingRecommended(false));
   }, []);
 
   useEffect(() => {
@@ -112,6 +136,34 @@ export default function DestinationPickerScreen({ navigation }: Props) {
             )}
           />
         )}
+
+        {!query.trim() && predictions.length === 0 && (
+          <View style={styles.recommendedWrap}>
+            <Text style={styles.recommendedTitle}>Препоръчани места</Text>
+            {loadingRecommended && recommended.length === 0 ? (
+              <ActivityIndicator color={colors.primary} style={{ marginTop: 8 }} />
+            ) : (
+              <FlatList
+                data={recommended}
+                keyExtractor={(p) => p.placeId}
+                style={styles.predictionList}
+                renderItem={({ item }) => {
+                  const Icon = RECOMMENDED_ICONS[item.kind] ?? MapPin;
+                  return (
+                    <Pressable style={styles.recommendedRow} onPress={() => selectPrediction(item)}>
+                      <View style={styles.recommendedIcon}>
+                        <Icon size={16} color={colors.primary} />
+                      </View>
+                      <Text style={styles.predictionMain} numberOfLines={1}>
+                        {item.mainText}
+                      </Text>
+                    </Pressable>
+                  );
+                }}
+              />
+            )}
+          </View>
+        )}
       </View>
 
       {dropoff && (
@@ -171,8 +223,26 @@ const styles = StyleSheet.create({
   input: { color: colors.text, flex: 1, fontSize: 16 },
   predictionList: { maxHeight: 220, backgroundColor: colors.card, borderRadius: 12 },
   prediction: { padding: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
-  predictionMain: { color: colors.text, fontSize: 15 },
+  predictionMain: { color: colors.text, fontSize: 15, flexShrink: 1 },
   predictionSecondary: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  recommendedWrap: { marginTop: 4 },
+  recommendedTitle: { color: colors.textMuted, fontSize: 12, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
+  recommendedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  recommendedIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   map: { flex: 1 },
   confirmBar: {
     position: 'absolute',
