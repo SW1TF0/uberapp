@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, FlatList, StyleSheet, Alert } from 'react-native';
 import database from '@react-native-firebase/database';
-import { History, Star } from 'lucide-react-native';
+import { History, Receipt as ReceiptIcon, Star } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
 import { shadows } from '../../theme/shadows';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDualCurrency } from '../../utils/currency';
-import { Ride, VehicleType } from '../../types/models';
+import { shareReceipt } from '../../services/receipt';
+import { DriverRecord, Ride, VehicleType } from '../../types/models';
 import { LoadingScreen } from '../../components/LoadingScreen';
 import { EmptyState } from '../../components/EmptyState';
 
@@ -35,6 +36,7 @@ export default function RideHistoryScreen() {
   const { firebaseUser } = useAuth();
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sharingRideId, setSharingRideId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!firebaseUser) return undefined;
@@ -68,6 +70,22 @@ export default function RideHistoryScreen() {
     return () => historyRef.off('value', listener);
   }, [firebaseUser]);
 
+  async function handleShareReceipt(ride: Ride) {
+    setSharingRideId(ride.id);
+    try {
+      let driverName: string | undefined;
+      if (ride.driverId) {
+        const snap = await database().ref(`/drivers/${ride.driverId}/profile`).once('value');
+        driverName = (snap.val() as DriverRecord['profile'] | null)?.name;
+      }
+      await shareReceipt(ride, { driverName });
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно генериране на касовата бележка.');
+    } finally {
+      setSharingRideId(null);
+    }
+  }
+
   if (loading) {
     return <LoadingScreen label="Зареждане на пътуванията..." />;
   }
@@ -99,6 +117,19 @@ export default function RideHistoryScreen() {
                   <Text style={styles.ratingText}>{item.rating}</Text>
                 </View>
               )}
+              {item.status === 'completed' && (
+                <Pressable
+                  style={styles.receiptButton}
+                  onPress={() => handleShareReceipt(item)}
+                  disabled={sharingRideId === item.id}
+                >
+                  {sharingRideId === item.id ? (
+                    <ActivityIndicator size="small" color={colors.textMuted} />
+                  ) : (
+                    <ReceiptIcon size={14} color={colors.textMuted} />
+                  )}
+                </Pressable>
+              )}
             </View>
           </View>
         )}
@@ -119,4 +150,9 @@ const styles = StyleSheet.create({
   meta: { color: colors.textMuted, fontSize: 12, flex: 1 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ratingText: { color: colors.textMuted, fontSize: 12, fontWeight: '600' },
+  receiptButton: {
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+  },
 });

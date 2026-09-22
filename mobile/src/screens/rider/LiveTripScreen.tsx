@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import database from '@react-native-firebase/database';
-import { Flag, Star } from 'lucide-react-native';
+import { Flag, Receipt as ReceiptIcon, Star } from 'lucide-react-native';
 import { useStripe } from '@stripe/stripe-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
@@ -25,6 +25,7 @@ import { useRiderRideNotifications } from '../../hooks/useRideNotifications';
 import { fetchDirections } from '../../services/freeMaps';
 import { createCardPaymentIntent } from '../../services/payments';
 import { submitReport } from '../../services/admin';
+import { shareReceipt } from '../../services/receipt';
 import { formatDualCurrency } from '../../utils/currency';
 import { DriverRecord, GeoPoint } from '../../types/models';
 import { LeafletMap } from '../../components/LeafletMap';
@@ -52,6 +53,19 @@ export default function LiveTripScreen({ navigation }: Props) {
   const [payingCard, setPayingCard] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [sharingReceipt, setSharingReceipt] = useState(false);
+
+  async function handleShareReceipt() {
+    if (!activeRide) return;
+    setSharingReceipt(true);
+    try {
+      await shareReceipt(activeRide, { driverName: driver?.profile.name });
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно генериране на касовата бележка.');
+    } finally {
+      setSharingReceipt(false);
+    }
+  }
 
   async function handleCancel() {
     setCancelling(true);
@@ -148,6 +162,15 @@ export default function LiveTripScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.centerScroll}>
           <Text style={styles.title}>Пристигна! 🎉</Text>
           <Text style={styles.fare}>{formatDualCurrency(activeRide.finalFareBGN ?? activeRide.fareEstimateBGN)}</Text>
+
+          <Pressable style={styles.receiptButton} onPress={handleShareReceipt} disabled={sharingReceipt}>
+            {sharingReceipt ? (
+              <ActivityIndicator size="small" color={colors.text} />
+            ) : (
+              <ReceiptIcon size={16} color={colors.text} />
+            )}
+            <Text style={styles.receiptLabel}>Касова бележка</Text>
+          </Pressable>
 
           {driver && (
             <View style={styles.completedDriverRow}>
@@ -312,6 +335,18 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted },
   title: { color: colors.text, fontSize: 24, fontWeight: '800' },
   fare: { color: colors.primary, fontSize: 22, fontWeight: '700', marginTop: 10 },
+  receiptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    ...shadows.card,
+  },
+  receiptLabel: { color: colors.text, fontWeight: '600', fontSize: 13 },
   sectionTitle: { color: colors.textMuted, marginTop: 24, marginBottom: 12 },
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   hint: { color: colors.textMuted, fontSize: 13 },

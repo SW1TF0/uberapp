@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import database from '@react-native-firebase/database';
-import { Flag } from 'lucide-react-native';
+import { Flag, Receipt as ReceiptIcon } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DriverStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { DEFAULT_REGION } from '../../data/kardzhaliRegion';
 import { useAuth } from '../../hooks/useAuth';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
@@ -12,18 +13,32 @@ import { DirectionsResult, fetchDirections } from '../../services/freeMaps';
 import { LeafletMap } from '../../components/LeafletMap';
 import { ReportModal } from '../../components/ReportModal';
 import { submitReport } from '../../services/admin';
+import { shareReceipt } from '../../services/receipt';
 import { formatDualCurrency } from '../../utils/currency';
 import { GeoPoint } from '../../types/models';
 
 type Props = NativeStackScreenProps<DriverStackParamList, 'DriverTrip'>;
 
 export default function DriverTripScreen({ navigation }: Props) {
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, profile } = useAuth();
   const { activeRide, updateRideStatus, completeRide, clearActiveRide } = useRideDispatch();
   const [ownLocation, setOwnLocation] = useState<GeoPoint | null>(null);
   const [route, setRoute] = useState<DirectionsResult | null>(null);
   const [completing, setCompleting] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [sharingReceipt, setSharingReceipt] = useState(false);
+
+  async function handleShareReceipt() {
+    if (!activeRide) return;
+    setSharingReceipt(true);
+    try {
+      await shareReceipt(activeRide, { showEarnings: true, driverName: profile?.name });
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно генериране на разписката.');
+    } finally {
+      setSharingReceipt(false);
+    }
+  }
 
   useEffect(() => {
     if (!firebaseUser) return undefined;
@@ -113,6 +128,14 @@ export default function DriverTripScreen({ navigation }: Props) {
             </View>
           </View>
         )}
+        <Pressable style={styles.receiptButton} onPress={handleShareReceipt} disabled={sharingReceipt}>
+          {sharingReceipt ? (
+            <ActivityIndicator size="small" color={colors.text} />
+          ) : (
+            <ReceiptIcon size={16} color={colors.text} />
+          )}
+          <Text style={styles.receiptLabel}>Разписка</Text>
+        </Pressable>
         <Pressable
           style={styles.primaryButton}
           onPress={() => {
@@ -201,6 +224,18 @@ const styles = StyleSheet.create({
   earningsValue: { color: colors.textMuted, fontSize: 13 },
   earningsLabelBold: { color: colors.text, fontWeight: '700' },
   earningsValueBold: { color: colors.primary, fontWeight: '700' },
+  receiptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    ...shadows.card,
+  },
+  receiptLabel: { color: colors.text, fontWeight: '600', fontSize: 13 },
   primaryButton: {
     backgroundColor: colors.primary,
     borderRadius: 14,
