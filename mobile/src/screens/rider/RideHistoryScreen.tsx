@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import database from '@react-native-firebase/database';
-import { Star } from 'lucide-react-native';
+import { History, Star } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDualCurrency } from '../../utils/currency';
 import { Ride, VehicleType } from '../../types/models';
+import { LoadingScreen } from '../../components/LoadingScreen';
+import { EmptyState } from '../../components/EmptyState';
 
 const STATUS_LABEL: Record<string, string> = {
   completed: 'Завършено',
@@ -66,11 +69,7 @@ export default function RideHistoryScreen() {
   }, [firebaseUser]);
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
+    return <LoadingScreen label="Зареждане на пътуванията..." />;
   }
 
   return (
@@ -80,7 +79,7 @@ export default function RideHistoryScreen() {
         data={rides}
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>Все още нямаш пътувания.</Text>}
+        ListEmptyComponent={<EmptyState icon={History} text="Все още нямаш пътувания." />}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardTop}>
@@ -110,11 +109,9 @@ export default function RideHistoryScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   title: { color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: 16 },
   list: { paddingBottom: 24 },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
-  card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10 },
+  card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10, ...shadows.card },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   route: { color: colors.text, fontSize: 15, fontWeight: '600', flex: 1 },
   price: { color: colors.primary, fontWeight: '700', fontSize: 15 },

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Image, FlatList, Pressable, ActivityIndicator, StyleSheet, Alert, RefreshControl } from 'react-native';
-import { Ban, CheckCircle2, Clock, Star, UserCheck } from 'lucide-react-native';
+import { Ban, Car, CheckCircle2, Clock, Star, UserCheck } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { formatDualCurrency } from '../../utils/currency';
 import {
   AdminDriverRow,
@@ -10,6 +11,8 @@ import {
   setDriverApproved,
   setUserBanned,
 } from '../../services/admin';
+import { LoadingScreen } from '../../components/LoadingScreen';
+import { EmptyState } from '../../components/EmptyState';
 
 export default function AdminDriversScreen() {
   const [rows, setRows] = useState<AdminDriverRow[]>([]);
@@ -85,11 +88,7 @@ export default function AdminDriversScreen() {
   }
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
+    return <LoadingScreen label="Зареждане на шофьорите..." />;
   }
 
   return (
@@ -100,7 +99,7 @@ export default function AdminDriversScreen() {
         keyExtractor={(r) => r.uid}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-        ListEmptyComponent={<Text style={styles.empty}>Все още няма регистрирани шофьори.</Text>}
+        ListEmptyComponent={<EmptyState icon={Car} text="Все още няма регистрирани шофьори." />}
         renderItem={({ item }) => {
           const busy = busyUid === item.uid;
           return (
@@ -109,7 +108,9 @@ export default function AdminDriversScreen() {
                 {item.carPhotoUrl ? (
                   <Image source={{ uri: item.carPhotoUrl }} style={styles.carThumb} />
                 ) : (
-                  <View style={styles.carThumbPlaceholder} />
+                  <View style={styles.carThumbPlaceholder}>
+                    <Car size={18} color={colors.textMuted} />
+                  </View>
                 )}
                 <View style={styles.flexShrink}>
                   <Text style={styles.name}>{item.name}</Text>
@@ -202,16 +203,21 @@ export default function AdminDriversScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 20 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   title: { color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 12 },
   list: { paddingBottom: 24 },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
-  card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10 },
+  card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10, ...shadows.card },
   cardBanned: { borderWidth: 1, borderColor: colors.danger },
   cardPending: { borderWidth: 1, borderColor: colors.warning },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
   carThumb: { width: 48, height: 48, borderRadius: 10 },
-  carThumbPlaceholder: { width: 48, height: 48, borderRadius: 10, backgroundColor: colors.surface },
+  carThumbPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   flexShrink: { flexShrink: 1 },
   name: { color: colors.text, fontSize: 16, fontWeight: '700' },
   meta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },

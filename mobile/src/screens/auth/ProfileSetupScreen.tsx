@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
+import { AlertCircle, Car, Phone, User } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { useAuth } from '../../hooks/useAuth';
 import { VehicleType } from '../../types/models';
 
@@ -66,30 +68,39 @@ export default function ProfileSetupScreen({ route }: Props) {
       <Text style={styles.title}>{role === 'driver' ? 'Профил на шофьор' : 'Твоят профил'}</Text>
 
       <Text style={styles.label}>Име</Text>
-      <TextInput
-        style={styles.input}
-        value={name}
-        onChangeText={setName}
-        placeholderTextColor={colors.textMuted}
-        placeholder="Иван Иванов"
-      />
+      <View style={styles.inputRow}>
+        <User size={18} color={colors.textMuted} />
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={setName}
+          placeholderTextColor={colors.textMuted}
+          placeholder="Иван Иванов"
+        />
+      </View>
 
       <Text style={styles.label}>Телефон</Text>
-      <TextInput
-        style={styles.input}
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-        placeholderTextColor={colors.textMuted}
-        placeholder="+359 88 123 4567"
-      />
+      <View style={styles.inputRow}>
+        <Phone size={18} color={colors.textMuted} />
+        <TextInput
+          style={styles.input}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          placeholderTextColor={colors.textMuted}
+          placeholder="+359 88 123 4567"
+        />
+      </View>
 
       {role === 'driver' && (
-        <>
-          <Text style={styles.sectionTitle}>Автомобил</Text>
+        <View style={styles.vehicleCard}>
+          <View style={styles.sectionTitleRow}>
+            <Car size={18} color={colors.primary} />
+            <Text style={styles.sectionTitle}>Автомобил</Text>
+          </View>
           <Text style={styles.label}>Марка</Text>
           <TextInput
-            style={styles.input}
+            style={styles.plainInput}
             value={make}
             onChangeText={setMake}
             placeholderTextColor={colors.textMuted}
@@ -97,7 +108,7 @@ export default function ProfileSetupScreen({ route }: Props) {
           />
           <Text style={styles.label}>Модел</Text>
           <TextInput
-            style={styles.input}
+            style={styles.plainInput}
             value={model}
             onChangeText={setModel}
             placeholderTextColor={colors.textMuted}
@@ -105,7 +116,7 @@ export default function ProfileSetupScreen({ route }: Props) {
           />
           <Text style={styles.label}>Цвят</Text>
           <TextInput
-            style={styles.input}
+            style={styles.plainInput}
             value={color}
             onChangeText={setColor}
             placeholderTextColor={colors.textMuted}
@@ -113,7 +124,7 @@ export default function ProfileSetupScreen({ route }: Props) {
           />
           <Text style={styles.label}>Регистрационен номер</Text>
           <TextInput
-            style={styles.input}
+            style={styles.plainInput}
             value={plate}
             onChangeText={setPlate}
             placeholderTextColor={colors.textMuted}
@@ -135,10 +146,15 @@ export default function ProfileSetupScreen({ route }: Props) {
               </Pressable>
             ))}
           </View>
-        </>
+        </View>
       )}
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && (
+        <View style={styles.errorRow}>
+          <AlertCircle size={16} color={colors.danger} />
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      )}
 
       <Pressable style={styles.button} onPress={submit} disabled={loading}>
         {loading ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonLabel}>Продължи</Text>}
@@ -151,10 +167,27 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, paddingTop: 70, paddingBottom: 60 },
   title: { color: colors.text, fontSize: 24, fontWeight: '700', marginBottom: 24 },
-  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 20, marginBottom: 4 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '700' },
   label: { color: colors.textMuted, marginTop: 14, marginBottom: 8 },
-  input: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+  },
+  input: { flex: 1, color: colors.text, paddingVertical: 12, fontSize: 16 },
+  vehicleCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 24,
+    ...shadows.card,
+  },
+  plainInput: {
+    backgroundColor: colors.surface,
     color: colors.text,
     borderRadius: 12,
     paddingHorizontal: 14,
@@ -162,11 +195,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   typeRow: { flexDirection: 'row', gap: 10 },
-  typeOption: { flex: 1, backgroundColor: colors.card, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  typeOption: { flex: 1, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   typeOptionSelected: { backgroundColor: colors.primary },
   typeLabel: { color: colors.text, fontWeight: '600' },
   typeLabelSelected: { color: colors.onPrimary },
-  error: { color: colors.danger, marginTop: 16 },
-  button: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 30 },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
+  error: { color: colors.danger, flexShrink: 1 },
+  button: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 30,
+    ...shadows.card,
+  },
   buttonLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
 });

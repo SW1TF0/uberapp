@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import database from '@react-native-firebase/database';
-import { Star } from 'lucide-react-native';
+import { MessageSquare, Star } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDualCurrency } from '../../utils/currency';
 import { fetchDriverCompletedRides, DriverReview } from '../../utils/reviews';
+import { LoadingScreen } from '../../components/LoadingScreen';
+import { EmptyState } from '../../components/EmptyState';
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' });
@@ -75,11 +78,7 @@ export default function DriverEarningsScreen() {
   }, [firebaseUser]);
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
+    return <LoadingScreen label="Зареждане на приходите..." />;
   }
 
   return (
@@ -111,7 +110,7 @@ export default function DriverEarningsScreen() {
       <FlatList
         data={reviews}
         keyExtractor={(r) => r.rideId}
-        ListEmptyComponent={<Text style={styles.empty}>Все още няма писмени отзиви.</Text>}
+        ListEmptyComponent={<EmptyState icon={MessageSquare} text="Все още няма писмени отзиви." />}
         renderItem={({ item }) => (
           <View style={styles.reviewCard}>
             <View style={styles.reviewHeader}>
@@ -137,15 +136,22 @@ export default function DriverEarningsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   title: { color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  duesCard: { backgroundColor: colors.card, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: colors.danger, marginBottom: 12 },
+  duesCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    marginBottom: 12,
+    ...shadows.card,
+  },
   duesCardSettled: { borderColor: colors.border },
   duesLabel: { color: colors.textMuted, fontSize: 13 },
   duesValue: { color: colors.danger, fontSize: 24, fontWeight: '800', marginTop: 6 },
   duesValueSettled: { color: colors.text },
   duesHint: { color: colors.textMuted, fontSize: 11, marginTop: 8 },
-  summaryCard: { backgroundColor: colors.card, borderRadius: 16, padding: 18 },
+  summaryCard: { backgroundColor: colors.card, borderRadius: 16, padding: 18, ...shadows.card },
   summaryLabel: { color: colors.textMuted, fontSize: 13 },
   summaryValue: { color: colors.primary, fontSize: 24, fontWeight: '800', marginTop: 6 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
@@ -158,12 +164,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginTop: 12,
+    ...shadows.card,
   },
   ratingValue: { color: colors.text, fontWeight: '700', fontSize: 16 },
   ratingCount: { color: colors.textMuted, fontSize: 13 },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 20, marginBottom: 10 },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 20 },
-  reviewCard: { backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 10 },
+  reviewCard: { backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 10, ...shadows.card },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   reviewStars: { flexDirection: 'row', gap: 2 },
   reviewDate: { color: colors.textMuted, fontSize: 12 },

@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text, Switch, StyleSheet } from 'react-native';
 import database from '@react-native-firebase/database';
+import { Bell, MapPin } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function SettingsScreen() {
@@ -18,6 +20,9 @@ export default function SettingsScreen() {
       <Text style={styles.title}>Настройки</Text>
 
       <View style={styles.row}>
+        <View style={styles.rowIcon}>
+          <Bell size={18} color={colors.primary} />
+        </View>
         <View style={styles.rowText}>
           <Text style={styles.rowLabel}>Известия</Text>
           <Text style={styles.rowHint}>Извести ме за промени в статуса на пътуването</Text>
@@ -26,6 +31,9 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.infoBlock}>
+        <View style={styles.infoBadge}>
+          <MapPin size={22} color={colors.onPrimary} fill={colors.onPrimary} />
+        </View>
         <Text style={styles.infoLine}>Kardzhali Ride</Text>
         <Text style={styles.infoLineMuted}>Версия 1.0.0</Text>
         <Text style={styles.infoLineMuted}>Валута: BGN (лв) · EUR (€)</Text>
@@ -44,11 +52,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     padding: 16,
+    ...shadows.card,
+  },
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   rowText: { flex: 1, marginRight: 12 },
   rowLabel: { color: colors.text, fontWeight: '600', fontSize: 15 },
   rowHint: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
-  infoBlock: { marginTop: 30, alignItems: 'center' },
+  infoBlock: { marginTop: 40, alignItems: 'center' },
+  infoBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
   infoLine: { color: colors.text, fontWeight: '600' },
   infoLineMuted: { color: colors.textMuted, marginTop: 4, fontSize: 12 },
 });

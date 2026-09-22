@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { useAuth } from '../hooks/useAuth';
+import { LoadingScreen } from '../components/LoadingScreen';
 
 import { AdminStackParamList, AuthStackParamList, DriverStackParamList, RiderStackParamList } from './types';
 import { ADMIN_EMAIL } from '../config/admin';
@@ -106,11 +106,7 @@ export default function RootNavigator() {
   const { loading, firebaseUser, profile } = useAuth();
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   // The admin account has no /users profile at all (it's created directly

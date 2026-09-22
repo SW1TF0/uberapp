@@ -1,9 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet, Alert, RefreshControl } from 'react-native';
-import { Ban } from 'lucide-react-native';
+import { Ban, ShieldCheck, Users } from 'lucide-react-native';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { fetchAllClients, setUserBanned } from '../../services/admin';
 import { UserProfile } from '../../types/models';
+import { LoadingScreen } from '../../components/LoadingScreen';
+import { EmptyState } from '../../components/EmptyState';
 
 export default function AdminClientsScreen() {
   const [clients, setClients] = useState<UserProfile[]>([]);
@@ -43,11 +46,7 @@ export default function AdminClientsScreen() {
   }
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
+    return <LoadingScreen label="Зареждане на клиентите..." />;
   }
 
   return (
@@ -58,17 +57,27 @@ export default function AdminClientsScreen() {
         keyExtractor={(c) => c.uid}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} />}
-        ListEmptyComponent={<Text style={styles.empty}>Все още няма регистрирани клиенти.</Text>}
+        ListEmptyComponent={<EmptyState icon={Users} text="Все още няма регистрирани клиенти." />}
         renderItem={({ item }) => {
           const busy = busyUid === item.uid;
           return (
             <View style={[styles.card, item.banned && styles.cardBanned]}>
               <View style={styles.cardTop}>
+                <View style={styles.avatarBadge}>
+                  <Text style={styles.avatarInitial}>{item.name?.[0] ?? '?'}</Text>
+                </View>
                 <View style={styles.flexShrink}>
                   <Text style={styles.name}>{item.name}</Text>
                   <Text style={styles.meta}>{item.phone}</Text>
                   <Text style={styles.meta}>{item.email}</Text>
-                  {item.banned && <Text style={styles.bannedTag}>БАНИРАН</Text>}
+                  {item.banned ? (
+                    <Text style={styles.bannedTag}>БАНИРАН</Text>
+                  ) : (
+                    <View style={styles.okRow}>
+                      <ShieldCheck size={12} color={colors.textMuted} />
+                      <Text style={styles.okTag}>Активен</Text>
+                    </View>
+                  )}
                 </View>
                 <Pressable
                   style={[styles.actionButton, item.banned ? styles.unbanButton : styles.banButton]}
@@ -97,17 +106,26 @@ export default function AdminClientsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 20 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   title: { color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 12 },
   list: { paddingBottom: 24 },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
-  card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10 },
+  card: { backgroundColor: colors.card, borderRadius: 14, padding: 16, marginBottom: 10, ...shadows.card },
   cardBanned: { borderWidth: 1, borderColor: colors.danger },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  avatarBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: { color: colors.text, fontWeight: '700', fontSize: 16 },
   flexShrink: { flexShrink: 1 },
   name: { color: colors.text, fontSize: 16, fontWeight: '700' },
   meta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   bannedTag: { color: colors.danger, fontWeight: '800', fontSize: 11, marginTop: 6, letterSpacing: 1 },
+  okRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  okTag: { color: colors.textMuted, fontSize: 11 },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',

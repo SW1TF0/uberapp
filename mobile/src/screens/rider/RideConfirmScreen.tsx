@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import database from '@react-native-firebase/database';
-import { ArrowLeft, Banknote, CreditCard } from 'lucide-react-native';
+import { ArrowLeft, Banknote, Car, CreditCard, Sparkles, Users } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RiderStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { useRideDispatch } from '../../hooks/useRideDispatch';
 import { estimateFare } from '../../utils/fare';
 import { formatDualCurrency } from '../../utils/currency';
 import { PaymentMethod, PricingRules, VehicleType } from '../../types/models';
+import { LoadingScreen } from '../../components/LoadingScreen';
 
 type Props = NativeStackScreenProps<RiderStackParamList, 'RideConfirm'>;
 
@@ -16,6 +18,12 @@ const VEHICLE_LABELS: Record<VehicleType, string> = {
   economy: 'KardzhaliGo',
   comfort: 'KardzhaliGo Comfort',
   xl: 'KardzhaliGo XL',
+};
+
+const VEHICLE_ICONS: Record<VehicleType, typeof Car> = {
+  economy: Car,
+  comfort: Sparkles,
+  xl: Users,
 };
 
 export default function RideConfirmScreen({ route, navigation }: Props) {
@@ -37,11 +45,7 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
   }, []);
 
   if (!pricing) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
+    return <LoadingScreen label="Зареждане на тарифите..." />;
   }
 
   const estimates = (['economy', 'comfort', 'xl'] as VehicleType[]).map((type) => ({
@@ -76,21 +80,28 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
       )}
 
       <View style={styles.vehicleList}>
-        {estimates.map((e) => (
-          <Pressable
-            key={e.type}
-            style={[styles.vehicleOption, vehicleType === e.type && styles.vehicleOptionSelected]}
-            onPress={() => setVehicleType(e.type)}
-          >
-            <View>
-              <Text style={styles.vehicleLabel}>{VEHICLE_LABELS[e.type]}</Text>
-              <Text style={styles.vehicleMeta}>
-                {e.distanceKm} км · {e.durationMin} мин
-              </Text>
-            </View>
-            <Text style={styles.vehiclePrice}>{formatDualCurrency(e.fareBGN)}</Text>
-          </Pressable>
-        ))}
+        {estimates.map((e) => {
+          const Icon = VEHICLE_ICONS[e.type];
+          const selected = vehicleType === e.type;
+          return (
+            <Pressable
+              key={e.type}
+              style={[styles.vehicleOption, selected && styles.vehicleOptionSelected]}
+              onPress={() => setVehicleType(e.type)}
+            >
+              <View style={[styles.vehicleIconBadge, selected && styles.vehicleIconBadgeSelected]}>
+                <Icon size={20} color={selected ? colors.onPrimary : colors.primary} />
+              </View>
+              <View style={styles.flexShrink}>
+                <Text style={styles.vehicleLabel}>{VEHICLE_LABELS[e.type]}</Text>
+                <Text style={styles.vehicleMeta}>
+                  {e.distanceKm} км · {e.durationMin} мин
+                </Text>
+              </View>
+              <Text style={styles.vehiclePrice}>{formatDualCurrency(e.fareBGN)}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <Text style={styles.sectionTitle}>Начин на плащане</Text>
@@ -130,7 +141,6 @@ export default function RideConfirmScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background, padding: 20, paddingTop: 60 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   backButton: {
     backgroundColor: colors.card,
     padding: 10,
@@ -143,19 +153,30 @@ const styles = StyleSheet.create({
   vehicleList: { marginTop: 12 },
   vehicleOption: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
     backgroundColor: colors.card,
     borderRadius: 14,
     padding: 16,
     marginBottom: 10,
     borderWidth: 2,
     borderColor: 'transparent',
+    ...shadows.card,
   },
   vehicleOptionSelected: { borderColor: colors.primary },
+  vehicleIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehicleIconBadgeSelected: { backgroundColor: colors.primary },
+  flexShrink: { flexShrink: 1 },
   vehicleLabel: { color: colors.text, fontSize: 16, fontWeight: '600' },
   vehicleMeta: { color: colors.textMuted, marginTop: 4 },
-  vehiclePrice: { color: colors.primary, fontSize: 16, fontWeight: '700' },
+  vehiclePrice: { color: colors.primary, fontSize: 16, fontWeight: '700', marginLeft: 'auto' },
   sectionTitle: { color: colors.textMuted, marginTop: 8, marginBottom: 10 },
   paymentRow: { flexDirection: 'row', gap: 12 },
   paymentOption: {
@@ -167,6 +188,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 12,
     paddingVertical: 14,
+    ...shadows.card,
   },
   paymentOptionSelected: { backgroundColor: colors.primary },
   paymentLabel: { color: colors.text, fontWeight: '600' },
@@ -178,6 +200,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 'auto',
+    ...shadows.card,
   },
   confirmLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
 });

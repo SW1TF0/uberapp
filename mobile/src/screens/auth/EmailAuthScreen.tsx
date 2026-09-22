@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { AlertCircle, Lock, Mail } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { colors } from '../../theme/colors';
+import { shadows } from '../../theme/shadows';
 import { useAuth } from '../../hooks/useAuth';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'EmailAuth'>;
@@ -59,26 +61,38 @@ export default function EmailAuthScreen({ route, navigation }: Props) {
       </View>
 
       <Text style={styles.label}>Имейл</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholderTextColor={colors.textMuted}
-        placeholder="ivan@example.com"
-      />
-      <Text style={styles.label}>Парола</Text>
-      <TextInput
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        placeholderTextColor={colors.textMuted}
-        placeholder="Минимум 6 символа"
-      />
+      <View style={styles.inputRow}>
+        <Mail size={18} color={colors.textMuted} />
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholderTextColor={colors.textMuted}
+          placeholder="ivan@example.com"
+        />
+      </View>
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      <Text style={styles.label}>Парола</Text>
+      <View style={styles.inputRow}>
+        <Lock size={18} color={colors.textMuted} />
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          placeholderTextColor={colors.textMuted}
+          placeholder="Минимум 6 символа"
+        />
+      </View>
+
+      {!!error && (
+        <View style={styles.errorRow}>
+          <AlertCircle size={16} color={colors.danger} />
+          <Text style={styles.error}>{error}</Text>
+        </View>
+      )}
 
       <Pressable style={styles.button} onPress={submit} disabled={loading}>
         {loading ? (
@@ -94,21 +108,42 @@ export default function EmailAuthScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background, padding: 24, paddingTop: 80 },
   title: { color: colors.text, fontSize: 24, fontWeight: '700', marginBottom: 20 },
-  tabs: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 12, padding: 4, marginBottom: 20 },
+  tabs: {
+    flexDirection: 'row',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+    ...shadows.card,
+  },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   tabActive: { backgroundColor: colors.primary },
   tabLabel: { color: colors.textMuted, fontWeight: '600' },
   tabLabelActive: { color: colors.onPrimary },
   label: { color: colors.textMuted, marginBottom: 8, marginTop: 8 },
-  input: {
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: colors.card,
-    color: colors.text,
     borderRadius: 12,
     paddingHorizontal: 14,
+  },
+  input: {
+    flex: 1,
+    color: colors.text,
     paddingVertical: 14,
     fontSize: 16,
   },
-  error: { color: colors.danger, marginTop: 12 },
-  button: { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 24 },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  error: { color: colors.danger, flexShrink: 1 },
+  button: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 24,
+    ...shadows.card,
+  },
   buttonLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 16 },
 });
