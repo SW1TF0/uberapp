@@ -70,3 +70,23 @@ export async function pickAndUploadCarPhoto(uid: string): Promise<string | null>
   await database().ref(`/drivers/${uid}/profile/carPhotoUrl`).set(carPhotoUrl);
   return carPhotoUrl;
 }
+
+// Optional photos of the driver's compliance documents (свидетелство за
+// управление / застрахователна полица), reviewed by the admin before
+// approval — see DriverCompliance in types/models.ts. Same free
+// data-URI-on-RTDB storage as the avatar/car photo above.
+export async function pickAndUploadLicenseDoc(uid: string): Promise<string | null> {
+  const docUrl = await pickAndEncode({ width: 400, height: 260 }, [4, 3], 'Снимката на документа');
+  if (!docUrl) return null;
+
+  await database().ref(`/drivers/${uid}/compliance/licenseDocUrl`).set(docUrl);
+  return docUrl;
+}
+
+export async function pickAndUploadInsuranceDoc(uid: string): Promise<string | null> {
+  const docUrl = await pickAndEncode({ width: 400, height: 260 }, [4, 3], 'Снимката на документа');
+  if (!docUrl) return null;
+
+  await database().ref(`/drivers/${uid}/compliance/insuranceDocUrl`).set(docUrl);
+  return docUrl;
+}

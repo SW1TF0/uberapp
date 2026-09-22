@@ -14,6 +14,10 @@ import {
 import { LoadingScreen } from '../../components/LoadingScreen';
 import { EmptyState } from '../../components/EmptyState';
 
+function formatDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString('bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function AdminDriversScreen() {
   const [rows, setRows] = useState<AdminDriverRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,6 +137,40 @@ export default function AdminDriversScreen() {
                     <Clock size={14} color={colors.warning} />
                     <Text style={styles.pendingTag}>ЧАКА ОДОБРЕНИЕ</Text>
                   </View>
+                  {item.compliance ? (
+                    <View style={styles.complianceBox}>
+                      <Text style={styles.complianceLine}>
+                        Св. за управление: <Text style={styles.complianceValue}>{item.compliance.licenseNumber}</Text>
+                      </Text>
+                      <Text style={styles.complianceLine}>
+                        Застраховка №: <Text style={styles.complianceValue}>{item.compliance.insurancePolicyNumber}</Text>
+                      </Text>
+                      <Text style={styles.complianceLine}>
+                        Валидна до:{' '}
+                        <Text
+                          style={[
+                            styles.complianceValue,
+                            item.compliance.insuranceExpiresAt < Date.now() && styles.complianceExpired,
+                          ]}
+                        >
+                          {formatDate(item.compliance.insuranceExpiresAt)}
+                          {item.compliance.insuranceExpiresAt < Date.now() ? ' · ИЗТЕКЛА' : ''}
+                        </Text>
+                      </Text>
+                      {(item.compliance.licenseDocUrl || item.compliance.insuranceDocUrl) && (
+                        <View style={styles.docThumbRow}>
+                          {item.compliance.licenseDocUrl && (
+                            <Image source={{ uri: item.compliance.licenseDocUrl }} style={styles.docThumb} />
+                          )}
+                          {item.compliance.insuranceDocUrl && (
+                            <Image source={{ uri: item.compliance.insuranceDocUrl }} style={styles.docThumb} />
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    <Text style={styles.complianceMissing}>Няма подадени данни за съответствие.</Text>
+                  )}
                   <View style={styles.actionsRow}>
                     <Pressable style={[styles.actionButton, styles.approveButton]} disabled={busy} onPress={() => approve(item)}>
                       {busy ? (
@@ -164,6 +202,9 @@ export default function AdminDriversScreen() {
                   </View>
                   <Text style={styles.duesMeta}>{item.unsettledRideCount} неразчетени пътувания · статус: {item.status}</Text>
                   {item.banned && <Text style={styles.bannedTag}>БАНИРАН</Text>}
+                  {item.compliance && item.compliance.insuranceExpiresAt < Date.now() && (
+                    <Text style={styles.bannedTag}>ЗАСТРАХОВКАТА Е ИЗТЕКЛА</Text>
+                  )}
 
                   <View style={styles.actionsRow}>
                     <Pressable
@@ -230,6 +271,13 @@ const styles = StyleSheet.create({
   bannedTag: { color: colors.danger, fontWeight: '800', fontSize: 11, marginTop: 8, letterSpacing: 1 },
   pendingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   pendingTag: { color: colors.warning, fontWeight: '800', fontSize: 11, letterSpacing: 1 },
+  complianceBox: { backgroundColor: colors.surface, borderRadius: 10, padding: 10, marginTop: 10 },
+  complianceLine: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
+  complianceValue: { color: colors.text, fontWeight: '600' },
+  complianceExpired: { color: colors.danger },
+  complianceMissing: { color: colors.danger, fontSize: 11, marginTop: 10 },
+  docThumbRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  docThumb: { width: 60, height: 40, borderRadius: 6 },
   actionsRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   actionButton: {
     flex: 1,

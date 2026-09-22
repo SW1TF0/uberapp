@@ -1,5 +1,5 @@
 import database from '@react-native-firebase/database';
-import { DriverRecord, DriverVehicle, DriverStatus, Report, Role, UserProfile } from '../types/models';
+import { DriverCompliance, DriverRecord, DriverVehicle, DriverStatus, Report, Role, UserProfile } from '../types/models';
 import { fetchDriverCompletedRides } from '../utils/reviews';
 
 export type AdminDriverRow = {
@@ -15,6 +15,7 @@ export type AdminDriverRow = {
   approved: boolean;
   owedBGN: number;
   unsettledRideCount: number;
+  compliance?: DriverCompliance;
 };
 
 // Every call here relies on database.rules.json granting the signed-in
@@ -66,6 +67,7 @@ export async function fetchAllDriversWithDues(): Promise<AdminDriverRow[]> {
         approved: driver.approved === true,
         owedBGN,
         unsettledRideCount: unsettled.length,
+        compliance: driver.compliance,
       };
     })
   );

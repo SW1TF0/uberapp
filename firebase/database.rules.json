@@ -36,6 +36,12 @@
         "banned": {
           ".validate": "newData.isBoolean() && (newData.val() === data.val() || auth.token.email === 'krasimiruzun@smartmenukj.com')"
         },
+        "consent": {
+          ".validate": "newData.hasChildren(['termsAcceptedAt','privacyAcceptedAt','version'])",
+          "termsAcceptedAt": { ".validate": "newData.isNumber()" },
+          "privacyAcceptedAt": { ".validate": "newData.isNumber()" },
+          "version": { ".validate": "newData.isString()" }
+        },
         "$other": {
           ".validate": false
         }
@@ -89,6 +95,15 @@
         "settledUpTo": {
           ".write": "auth != null && auth.token.email === 'krasimiruzun@smartmenukj.com'",
           ".validate": "newData.isNumber()"
+        },
+
+        "compliance": {
+          ".write": "auth != null && auth.uid === $driverId",
+          "licenseNumber": { ".validate": "newData.isString() && newData.val().length < 60" },
+          "insurancePolicyNumber": { ".validate": "newData.isString() && newData.val().length < 60" },
+          "insuranceExpiresAt": { ".validate": "newData.isNumber()" },
+          "licenseDocUrl": { ".validate": "newData.isString() && newData.val().length < 150000" },
+          "insuranceDocUrl": { ".validate": "newData.isString() && newData.val().length < 150000" }
         }
       }
     },

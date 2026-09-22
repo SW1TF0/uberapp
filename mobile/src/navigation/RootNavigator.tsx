@@ -30,6 +30,7 @@ import AdminReportsScreen from '../screens/admin/AdminReportsScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 import BannedScreen from '../screens/shared/BannedScreen';
+import LegalDocScreen from '../screens/shared/LegalDocScreen';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const RiderStack = createNativeStackNavigator<RiderStackParamList>();
@@ -53,6 +54,7 @@ function AuthNavigator() {
         component={ProfileSetupScreen}
         options={{ title: '', headerBackVisible: false }}
       />
+      <AuthStack.Screen name="LegalDoc" component={LegalDocScreen} options={{ title: '' }} />
     </AuthStack.Navigator>
   );
 }
@@ -71,6 +73,7 @@ function RiderNavigator() {
       <RiderStack.Screen name="RideHistory" component={RideHistoryScreen} options={{ title: '' }} />
       <RiderStack.Screen name="Profile" component={ProfileScreen} options={{ title: '' }} />
       <RiderStack.Screen name="Settings" component={SettingsScreen} options={{ title: '' }} />
+      <RiderStack.Screen name="LegalDoc" component={LegalDocScreen} options={{ title: '' }} />
     </RiderStack.Navigator>
   );
 }
@@ -87,6 +90,7 @@ function DriverNavigator() {
       <DriverStack.Screen name="DriverEarnings" component={DriverEarningsScreen} options={{ title: '' }} />
       <DriverStack.Screen name="Profile" component={ProfileScreen} options={{ title: '' }} />
       <DriverStack.Screen name="Settings" component={SettingsScreen} options={{ title: '' }} />
+      <DriverStack.Screen name="LegalDoc" component={LegalDocScreen} options={{ title: '' }} />
     </DriverStack.Navigator>
   );
 }

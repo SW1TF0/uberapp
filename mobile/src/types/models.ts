@@ -11,6 +11,15 @@ export type RideStatus =
   | 'cancelled';
 export type DriverStatus = 'offline' | 'online' | 'busy';
 
+// Recorded once at signup (GDPR/ЗЗЛД: proof of consent to the Terms and
+// Privacy Policy in effect at that time). LEGAL_DOCS_VERSION in
+// content/legalContent.ts is the version these timestamps refer to.
+export type ConsentRecord = {
+  termsAcceptedAt: number;
+  privacyAcceptedAt: number;
+  version: string;
+};
+
 export type UserProfile = {
   uid: string;
   role: Role;
@@ -20,6 +29,7 @@ export type UserProfile = {
   createdAt: number;
   avatarUrl?: string;
   notificationsEnabled?: boolean;
+  consent?: ConsentRecord;
   // Admin-only field (see database.rules.json) — a client can never set
   // this to true itself, and a banned rider/driver is blocked server-side
   // from creating rides, accepting rides, or going online.
@@ -42,6 +52,20 @@ export type DriverLocation = {
   updatedAt: number;
 };
 
+// Plumbing for Bulgarian passenger-transport regulation (Auto Transport
+// Act / Наредба № 34 for taxi & hired-car transport): the actual right to
+// operate still requires the driver's own registration with the
+// Executive Agency "Automobile Administration" and NRA — this only lets
+// the driver submit the paperwork in-app for the admin to review before
+// approving them, it does not itself make the platform compliant.
+export type DriverCompliance = {
+  licenseNumber: string;
+  insurancePolicyNumber: string;
+  insuranceExpiresAt: number;
+  licenseDocUrl?: string;
+  insuranceDocUrl?: string;
+};
+
 export type DriverRecord = {
   profile: {
     name: string;
@@ -52,6 +76,7 @@ export type DriverRecord = {
     avatarUrl?: string;
     carPhotoUrl?: string;
   };
+  compliance?: DriverCompliance;
   status: DriverStatus;
   location: DriverLocation | null;
   // Admin bookkeeping: completed rides after this timestamp are what the

@@ -4,6 +4,7 @@ export type AuthStackParamList = {
   Welcome: undefined;
   EmailAuth: { role: 'rider' | 'driver' };
   ProfileSetup: { role: 'rider' | 'driver' };
+  LegalDoc: { doc: 'privacy' | 'terms' };
 };
 
 export type RiderStackParamList = {
@@ -14,6 +15,7 @@ export type RiderStackParamList = {
   RideHistory: undefined;
   Profile: undefined;
   Settings: undefined;
+  LegalDoc: { doc: 'privacy' | 'terms' };
 };
 
 export type DriverStackParamList = {
@@ -22,6 +24,7 @@ export type DriverStackParamList = {
   DriverEarnings: undefined;
   Profile: undefined;
   Settings: undefined;
+  LegalDoc: { doc: 'privacy' | 'terms' };
 };
 
 export type AdminStackParamList = {

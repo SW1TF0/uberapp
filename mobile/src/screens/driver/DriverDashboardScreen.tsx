@@ -129,13 +129,30 @@ export default function DriverDashboardScreen({ navigation }: Props) {
         <View style={styles.statusPill}>
           <View style={[styles.dot, { backgroundColor: online ? colors.primary : colors.textMuted }]} />
           <Text style={styles.statusText}>{online ? 'Онлайн' : 'Офлайн'}</Text>
-          <Switch value={online} onValueChange={toggleOnline} disabled={hasActiveRide} trackColor={{ true: colors.primary }} />
+          <Switch
+            value={online}
+            onValueChange={toggleOnline}
+            disabled={hasActiveRide}
+            trackColor={{ true: colors.primary }}
+            accessibilityRole="switch"
+            accessibilityLabel={online ? 'Онлайн, излез офлайн' : 'Офлайн, излез онлайн'}
+          />
         </View>
         <View style={styles.topBarIcons}>
-          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('DriverEarnings')}>
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('DriverEarnings')}
+            accessibilityRole="button"
+            accessibilityLabel="Приходи"
+          >
             <Wallet size={20} color={colors.text} />
           </Pressable>
-          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('Profile')}>
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Profile')}
+            accessibilityRole="button"
+            accessibilityLabel="Профил"
+          >
             <User size={20} color={colors.text} />
           </Pressable>
         </View>

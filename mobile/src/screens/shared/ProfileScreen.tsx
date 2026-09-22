@@ -1,23 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, Image, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import database from '@react-native-firebase/database';
-import { LogOut, Camera, Car, Settings as SettingsIcon } from 'lucide-react-native';
+import { LogOut, Camera, Car, FileCheck, Settings as SettingsIcon, Shield } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../hooks/useAuth';
-import { pickAndUploadAvatar, pickAndUploadCarPhoto } from '../../services/avatar';
+import {
+  pickAndUploadAvatar,
+  pickAndUploadCarPhoto,
+  pickAndUploadInsuranceDoc,
+  pickAndUploadLicenseDoc,
+} from '../../services/avatar';
+import { DriverCompliance } from '../../types/models';
 
 export default function ProfileScreen() {
   const { profile, firebaseUser, signOut } = useAuth();
   const navigation = useNavigation<any>();
   const [uploading, setUploading] = useState(false);
   const [uploadingCar, setUploadingCar] = useState(false);
+  const [uploadingLicense, setUploadingLicense] = useState(false);
+  const [uploadingInsurance, setUploadingInsurance] = useState(false);
   const [carPhotoUrl, setCarPhotoUrl] = useState<string | null>(null);
+  const [compliance, setCompliance] = useState<DriverCompliance | null>(null);
 
   useEffect(() => {
     if (!firebaseUser || profile?.role !== 'driver') return undefined;
     const ref = database().ref(`/drivers/${firebaseUser.uid}/profile/carPhotoUrl`);
     const listener = ref.on('value', (snap) => setCarPhotoUrl(snap.val() as string | null));
+    return () => ref.off('value', listener);
+  }, [firebaseUser, profile?.role]);
+
+  useEffect(() => {
+    if (!firebaseUser || profile?.role !== 'driver') return undefined;
+    const ref = database().ref(`/drivers/${firebaseUser.uid}/compliance`);
+    const listener = ref.on('value', (snap) => setCompliance(snap.val() as DriverCompliance | null));
     return () => ref.off('value', listener);
   }, [firebaseUser, profile?.role]);
 
@@ -42,6 +58,30 @@ export default function ProfileScreen() {
       Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно качване на снимката.');
     } finally {
       setUploadingCar(false);
+    }
+  }
+
+  async function uploadLicenseDoc() {
+    if (!firebaseUser) return;
+    setUploadingLicense(true);
+    try {
+      await pickAndUploadLicenseDoc(firebaseUser.uid);
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно качване на документа.');
+    } finally {
+      setUploadingLicense(false);
+    }
+  }
+
+  async function uploadInsuranceDoc() {
+    if (!firebaseUser) return;
+    setUploadingInsurance(true);
+    try {
+      await pickAndUploadInsuranceDoc(firebaseUser.uid);
+    } catch (e) {
+      Alert.alert('Грешка', e instanceof Error ? e.message : 'Неуспешно качване на документа.');
+    } finally {
+      setUploadingInsurance(false);
     }
   }
 
@@ -82,6 +122,29 @@ export default function ProfileScreen() {
             )}
           </View>
         </Pressable>
+      )}
+
+      {profile?.role === 'driver' && (
+        <View style={styles.complianceSection}>
+          <View style={styles.complianceHeaderRow}>
+            <Shield size={16} color={colors.primary} />
+            <Text style={styles.complianceHeader}>Документи за съответствие</Text>
+          </View>
+          <Pressable style={styles.docRow} onPress={uploadLicenseDoc} disabled={uploadingLicense}>
+            <FileCheck size={16} color={compliance?.licenseDocUrl ? colors.primary : colors.textMuted} />
+            <Text style={styles.docLabel}>
+              {compliance?.licenseDocUrl ? 'Свидетелство за управление · качено' : 'Качи свидетелство за управление'}
+            </Text>
+            {uploadingLicense && <ActivityIndicator size="small" color={colors.textMuted} />}
+          </Pressable>
+          <Pressable style={styles.docRow} onPress={uploadInsuranceDoc} disabled={uploadingInsurance}>
+            <FileCheck size={16} color={compliance?.insuranceDocUrl ? colors.primary : colors.textMuted} />
+            <Text style={styles.docLabel}>
+              {compliance?.insuranceDocUrl ? 'Застрахователна полица · качена' : 'Качи застрахователна полица'}
+            </Text>
+            {uploadingInsurance && <ActivityIndicator size="small" color={colors.textMuted} />}
+          </Pressable>
+        </View>
       )}
 
       <Pressable style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
@@ -152,6 +215,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.background,
   },
+  complianceSection: { width: '100%', paddingHorizontal: 24, marginTop: 28 },
+  complianceHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  complianceHeader: { color: colors.text, fontWeight: '700', fontSize: 13 },
+  docRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  docLabel: { color: colors.text, fontSize: 12, flex: 1 },
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',

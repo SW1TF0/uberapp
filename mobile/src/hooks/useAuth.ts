@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react';
 import auth from '@react-native-firebase/auth';
 import database from '@react-native-firebase/database';
 import { useAuthStore } from '../store/authStore';
-import { DriverVehicle, UserProfile } from '../types/models';
+import { ConsentRecord, DriverCompliance, DriverVehicle, UserProfile } from '../types/models';
 
 // Wraps @react-native-firebase email/password auth + the /users profile
 // node. Email/password is unambiguously free on Firebase's Spark plan (no
@@ -50,7 +50,7 @@ export function useAuth() {
     await auth().signInWithEmailAndPassword(email.trim(), password);
   }, []);
 
-  const completeRiderProfile = useCallback(async (name: string, phone: string): Promise<void> => {
+  const completeRiderProfile = useCallback(async (name: string, phone: string, consent: ConsentRecord): Promise<void> => {
     const user = auth().currentUser;
     if (!user) throw new Error('Не си влязъл в профила си.');
 
@@ -61,12 +61,19 @@ export function useAuth() {
       phone,
       email: user.email ?? '',
       createdAt: Date.now(),
+      consent,
     };
     await database().ref(`/users/${user.uid}`).set(newProfile);
   }, []);
 
   const completeDriverProfile = useCallback(
-    async (name: string, phone: string, vehicle: DriverVehicle): Promise<void> => {
+    async (
+      name: string,
+      phone: string,
+      vehicle: DriverVehicle,
+      consent: ConsentRecord,
+      compliance: DriverCompliance
+    ): Promise<void> => {
       const user = auth().currentUser;
       if (!user) throw new Error('Не си влязъл в профила си.');
 
@@ -77,6 +84,7 @@ export function useAuth() {
         phone,
         email: user.email ?? '',
         createdAt: Date.now(),
+        consent,
       };
 
       const updates: Record<string, unknown> = {
@@ -93,6 +101,7 @@ export function useAuth() {
         // field) — this is the only value a driver is allowed to
         // self-write there; only the admin account can flip it to true.
         [`/drivers/${user.uid}/approved`]: false,
+        [`/drivers/${user.uid}/compliance`]: compliance,
       };
       await database().ref().update(updates);
     },
@@ -110,6 +119,30 @@ export function useAuth() {
     await auth().signOut();
   }, []);
 
+  // GDPR Art. 17 "right to erasure" — removes the profile node (and the
+  // driver node, if any) this account owns, then deletes the Firebase Auth
+  // account itself. Ride/transaction records are left in place (they're
+  // keyed by uid, not personally identifying on their own, and Bulgarian
+  // accounting law requires the platform to retain them regardless — see
+  // Privacy Policy §6) but the account can no longer sign in or be
+  // attributed to a name/phone/email once this completes.
+  const deleteAccount = useCallback(async (): Promise<void> => {
+    const user = auth().currentUser;
+    if (!user) throw new Error('Не си влязъл в профила си.');
+
+    const isDriver = profile?.role === 'driver';
+    const updates: Record<string, unknown> = { [`/users/${user.uid}`]: null };
+    if (isDriver) {
+      updates[`/drivers/${user.uid}/profile`] = null;
+      updates[`/drivers/${user.uid}/compliance`] = null;
+      updates[`/drivers/${user.uid}/status`] = null;
+      updates[`/drivers/${user.uid}/location`] = null;
+      updates[`/drivers/${user.uid}/approved`] = null;
+    }
+    await database().ref().update(updates);
+    await user.delete();
+  }, [profile?.role]);
+
   return {
     firebaseUser,
     profile,
@@ -119,5 +152,6 @@ export function useAuth() {
     completeRiderProfile,
     completeDriverProfile,
     signOut,
+    deleteAccount,
   };
 }

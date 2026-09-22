@@ -46,6 +46,10 @@ function buildReceiptHtml(ride: Ride, options: ReceiptOptions): string {
   const pickup = escapeHtml(ride.pickup.address || 'Начална точка');
   const dropoff = escapeHtml(ride.dropoff.address || 'Крайна точка');
   const paymentLabel = ride.paymentMethod === 'cash' ? 'В брой' : 'Карта';
+  const fiscalDisclaimer =
+    ride.paymentMethod === 'cash'
+      ? 'Тази бележка е информационна и не представлява фискален касов бон по смисъла на Наредба Н-18 на МФ.'
+      : '';
   const statusLabel = STATUS_LABELS[ride.status] ?? ride.status;
   const stars = typeof ride.rating === 'number' ? '★'.repeat(ride.rating) + '☆'.repeat(5 - ride.rating) : '';
 
@@ -107,7 +111,10 @@ function buildReceiptHtml(ride: Ride, options: ReceiptOptions): string {
     <tr class="total-row"><td>Общо</td><td class="value">${formatDualCurrency(fareBGN)}</td></tr>
   </table>
 
-  <div class="footer">Благодарим, че пътува с Kardzhali Ride</div>
+  <div class="footer">
+    Благодарим, че пътува с Kardzhali Ride
+    ${fiscalDisclaimer ? `<br/>${fiscalDisclaimer}` : ''}
+  </div>
 </body>
 </html>`;
 }

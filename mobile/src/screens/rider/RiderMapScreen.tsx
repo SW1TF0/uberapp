@@ -69,17 +69,32 @@ export default function RiderMapScreen({ navigation }: Props) {
       <View style={styles.topBar}>
         <Text style={styles.greeting}>Здравей, {profile?.name?.split(' ')[0] || 'приятел'} 👋</Text>
         <View style={styles.topBarIcons}>
-          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('RideHistory')}>
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('RideHistory')}
+            accessibilityRole="button"
+            accessibilityLabel="История на пътуванията"
+          >
             <History size={20} color={colors.text} />
           </Pressable>
-          <Pressable style={styles.iconButton} onPress={() => navigation.navigate('Profile')}>
+          <Pressable
+            style={styles.iconButton}
+            onPress={() => navigation.navigate('Profile')}
+            accessibilityRole="button"
+            accessibilityLabel="Профил"
+          >
             <User size={20} color={colors.text} />
           </Pressable>
         </View>
       </View>
 
       <View style={styles.sheet}>
-        <Pressable style={styles.searchBar} onPress={() => navigation.navigate('DestinationPicker')}>
+        <Pressable
+          style={styles.searchBar}
+          onPress={() => navigation.navigate('DestinationPicker')}
+          accessibilityRole="button"
+          accessibilityLabel="Накъде отиваш? Избери дестинация"
+        >
           <Search size={18} color={colors.textMuted} />
           <Text style={styles.searchPlaceholder}>Накъде отиваш?</Text>
         </Pressable>
